@@ -1,0 +1,57 @@
+{
+  "env": {
+    "parallelism": 1,
+    "job.name": "inceptor输出测试",
+    "job.mode": "batch"
+  },
+  "preHandler": [],
+  "source": [
+    {
+      "plugin_name": "Jdbc",
+      "dsId": "1795689697682472962",
+      "dsName": "mysql-血缘测试来源库",
+      "dsType": "mysql",
+      "resourceType": "table",
+      "driver": "com.mysql.cj.jdbc.Driver",
+      "connection_check_timeout_sec": 100,
+      "table_list": [
+        {
+          "table_path": "source.device",
+          "query": "SELECT\n `device_id`,\n `name`,\n `type`,\n `longitude`,\n `latitude`,\n `height`,\n `radius`,\n `distance`,\n `service_address`,\n `status`,\n `term_type`,\n `properties`,\n `runway_name`,\n `direction`,\n `runway_code`,\n `delay`\nFROM\n `source`.`device`"
+        }
+      ],
+      "database": "source",
+      "url": "jdbc:mysql://172.16.11.135:3306/source?remarks=true&useInformationSchema=true&useCursorFetch=true&defaultFetchSize=2048&rewriteBatchedStatements=true",
+      "user": "root",
+      "password": "1qaz@WSX",
+      "resources": [
+        "device"
+      ],
+      "result_table_name": "ot_3462eddc02c94cc48e23c9fd1829c13d",
+      "ottomi_node_type": "JdbcSource"
+    }
+  ],
+  "transform": [],
+  "sink": [
+    {
+      "plugin_name": "Jdbc",
+      "type": "inceptor",
+      "driver": "org.apache.hive.jdbc.HiveDriver",
+      "url": "jdbc:hive2://172.16.8.211:10000/default",
+      "user": "admin",
+      "password": "admin",
+      "primary_keys": [],
+      "batch_size": 2048,
+      "generate_sink_sql": true,
+      "database": "default",
+      "table": "ods_device",
+      "compatible_mode": "inceptor",
+      "schema_save_mode": "ERROR_WHEN_SCHEMA_NOT_EXIST",
+      "result_table_name": "ot_a8e4118a22c446b8a852a5a1d28fbca4",
+      "ottomi_node_type": "JdbcSink",
+      "source_table_name": [
+        "ot_3462eddc02c94cc48e23c9fd1829c13d"
+      ]
+    }
+  ]
+}

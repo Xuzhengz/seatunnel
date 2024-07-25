@@ -1,0 +1,69 @@
+{
+  "env": {
+    "parallelism": 1,
+    "job.mode": "STREAMING",
+    "checkpoint.interval": "5000"
+  },
+  "source": [
+    {
+      "plugin_name": "Kafka",
+      "bootstrap.servers": "hadoop102:9092,hadoop103:9092,hadoop104:9092",
+      "topic": "quality",
+      "consumer.group": "quality",
+      "schema": {
+        "fields": {
+          "name": "string",
+          "id": "int"
+        }
+      },
+      "start_mode": "latest",
+      "format_error_handle_way": "skip",
+      "format": "json",
+      "result_table_name": "jsonPath"
+    }
+  ],
+  "transform": [
+    {
+      "plugin_name": "JsonPath",
+      "columns": [
+        {
+          "src_field": "name",
+          "path": "$.name1",
+          "dest_field": "name1"
+        },
+        {
+          "src_field": "name",
+          "path": "$.name2",
+          "dest_field": "name2"
+        },
+        {
+          "src_field": "name",
+          "path": "$.name3",
+          "dest_field": "name3",
+          "dest_type": "double"
+        },
+        {
+          "src_field": "name",
+          "path": "$.name4",
+          "dest_field": "name4",
+          "dest_type": "boolean"
+        },
+        {
+          "src_field": "name",
+          "path": "$.name5.name55",
+          "dest_field": "name55"
+        }
+      ],
+      "result_table_name": "console",
+      "source_table_name": [
+        "jsonPath"
+      ]
+    }
+  ],
+  "sink": [
+    {
+      "source_table_name": "console",
+      "plugin_name": "console"
+    }
+  ]
+}
