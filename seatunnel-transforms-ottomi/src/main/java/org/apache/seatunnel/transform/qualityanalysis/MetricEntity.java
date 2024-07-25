@@ -21,14 +21,17 @@ public class MetricEntity implements Serializable {
     private boolean open;
     private long dirtyDataLimit;
     private String modelId;
+    private String modelName;
     private String resource;
     private String resourceComment;
     private String dsId;
     private String dsName;
     private String metricApi;
+    private String warningApi;
     private String jobMode;
     private String deptId;
     private String deptName;
     private String tenantId;
     private String createBy;
+    private boolean preview;
 }

@@ -26,6 +26,7 @@ import org.apache.seatunnel.api.table.type.RowKind;
 import org.apache.seatunnel.transform.common.MultipleFieldOutputTransform;
 import org.apache.seatunnel.transform.common.SeaTunnelRowAccessor;
 
+import cn.hutool.core.lang.Console;
 import cn.hutool.core.lang.Dict;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
@@ -35,7 +36,6 @@ import cn.hutool.json.JSONUtil;
 import com.oceandatum.quality.common.rulebase.IRuleHandler;
 import com.oceandatum.quality.common.rulebase.RuleFactory;
 import lombok.NonNull;
-import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -47,7 +47,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-@Slf4j
 public class QualityAnalysisTransform extends MultipleFieldOutputTransform {
 
     public static final String PLUGIN_NAME = "QualityAnalysis";
@@ -132,6 +131,15 @@ public class QualityAnalysisTransform extends MultipleFieldOutputTransform {
                             .createBy(
                                     config.getOptional(QualityAnalysisTransformConfig.CREATE_BY)
                                             .get())
+                            .preview(
+                                    config.getOptional(QualityAnalysisTransformConfig.IS_PREVIEW)
+                                            .orElse(false))
+                            .warningApi(
+                                    config.getOptional(QualityAnalysisTransformConfig.WARNING_API)
+                                            .get())
+                            .modelName(
+                                    config.getOptional(QualityAnalysisTransformConfig.MODEL_NAME)
+                                            .get())
                             .build();
         } catch (Exception e) {
             throw new RuntimeException("init transform config error：", e);
@@ -207,7 +215,19 @@ public class QualityAnalysisTransform extends MultipleFieldOutputTransform {
                 }
             }
         } catch (Exception e) {
-            log.error("send quality metric error：" + e.getMessage());
+            Console.error("send quality metric error：" + e.getMessage());
+        }
+    }
+
+    private void sendDirtyNotice() {
+        try {
+            Map<String, Object> formMap = new HashMap<>();
+            formMap.put(Constants.CREATE_BY, entity.getCreateBy());
+            formMap.put(Constants.MODEL_NAME, entity.getModelName());
+            formMap.put(Constants.RESOURCE, entity.getResource());
+            HttpUtil.createPost(entity.getWarningApi()).form(formMap).executeAsync();
+        } catch (Exception e) {
+            Console.error("send dirty data notice error：" + e.getMessage());
         }
     }
 
@@ -242,11 +262,14 @@ public class QualityAnalysisTransform extends MultipleFieldOutputTransform {
         metricsMap.put(Constants.TABLE_LEVEL, tableLevel);
         // send dirty data notice
         if (entity.getDirtyDataLimit() > 0 && dirtyDataNum == entity.getDirtyDataLimit()) {
-            log.warn("dirty data has exceed config limit,please check.");
+            Console.error("dirty data has exceed config limit,please check.");
+            if (!entity.isPreview()) {
+                sendDirtyNotice();
+            }
         }
         // TODO IF OPEN THEN ADD CHECK_RESULT
         if (entity.isOpen()) {
-            return new Object[] {rowCheckResult};
+            return new Object[] {String.valueOf(rowCheckResult)};
         }
         return new Object[0];
     }
@@ -303,10 +326,13 @@ public class QualityAnalysisTransform extends MultipleFieldOutputTransform {
 
     @Override
     public void close() {
-        if (ObjUtil.isNotEmpty(scheduledExecutorService)) {
+        if (ObjUtil.isNotEmpty(scheduledExecutorService)
+                && !scheduledExecutorService.isShutdown()) {
             scheduledExecutorService.shutdownNow();
         }
         // last send metrics
-        sendMetric(true);
+        if (!entity.isPreview()) {
+            sendMetric(true);
+        }
     }
 }

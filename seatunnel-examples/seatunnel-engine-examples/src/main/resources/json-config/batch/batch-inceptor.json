@@ -4,7 +4,9 @@
     "job.name": "inceptor输出测试",
     "job.mode": "batch"
   },
-  "preHandler": [],
+  "preHandler": [
+
+  ],
   "source": [
     {
       "plugin_name": "Jdbc",
@@ -31,22 +33,28 @@
       "ottomi_node_type": "JdbcSource"
     }
   ],
-  "transform": [],
+  "transform": [
+
+  ],
   "sink": [
     {
       "plugin_name": "Jdbc",
       "type": "inceptor",
       "driver": "org.apache.hive.jdbc.HiveDriver",
-      "url": "jdbc:hive2://172.16.8.211:10000/default",
+      "url": "jdbc:hive2://172.16.8.211:10000/default;",
       "user": "admin",
       "password": "admin",
-      "primary_keys": [],
+      "primary_keys": [
+
+      ],
       "batch_size": 2048,
       "generate_sink_sql": true,
       "database": "default",
       "table": "ods_device",
-      "compatible_mode": "inceptor",
       "schema_save_mode": "ERROR_WHEN_SCHEMA_NOT_EXIST",
+      "compatible_mode": "inceptor",
+      "data_save_mode": "CUSTOM_PROCESSING",
+      "custom_sql ": "truncate table ods_device",
       "result_table_name": "ot_a8e4118a22c446b8a852a5a1d28fbca4",
       "ottomi_node_type": "JdbcSink",
       "source_table_name": [

@@ -23,6 +23,8 @@ public class Constants {
     public static final String RESOURCE_COMMENT = "resourceComment";
     // 模型id
     public static final String MODEL_ID = "modelId";
+    // 模型名称
+    public static final String MODEL_NAME = "modelName";
     // 规则名称
     public static final String RULE_NAME = "ruleName";
     // 规则类型

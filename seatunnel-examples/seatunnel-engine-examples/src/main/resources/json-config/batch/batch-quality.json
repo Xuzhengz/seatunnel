@@ -5,7 +5,6 @@
     "job.mode": "batch"
   },
   "preHandler": [
-
   ],
   "source": [
     {
@@ -47,43 +46,24 @@
           "columnNames": [
             "device_id"
           ]
-        },
-        "1343460292458840066": {
-          "ruleName": "邮政编码",
-          "ruleType": "regex",
-          "ruleCode": "^(0[1-7]|1[0-356]|2[0-7]|3[0-6]|4[0-7]|5[1-7]|6[1-7]|7[0-5]|8[013-6])\\d{4}$",
-          "columns": [
-            1
-          ],
-          "columnNames": [
-            "name"
-          ]
-        },
-        "1318815534974926850": {
-          "ruleName": "全角(报告)",
-          "ruleType": "glue_java",
-          "ruleCode": "package com.oceandatum.quality.common.rulebase;\r\nimport org.apache.commons.lang3.StringUtils;\r\n\r\n/**\r\n * 字符串全角检查\r\n * @author sxj\r\n * @create 2021-07-20 11:30\r\n */\r\npublic class FullAngleRule extends AbstractRule {\r\n\r\n    @Override\r\n    public boolean doCheck(String value) {\r\n        return this.doFullAngleCheck(value);\r\n    }\r\n\r\n    @Override\r\n    public boolean doCheck(String value, String target) {\r\n        return false;\r\n    }\r\n\r\n    public boolean doFullAngleCheck(String value){\r\n        if (StringUtils.isBlank(value)){\r\n            return false;\r\n        }\r\n        boolean result = false;\r\n        // 首先将汉字用空格替换掉\r\n        value = value.replaceAll(\"[\\u4e00-\\u9fa5]\", \"\");\r\n\r\n        char[] chars_test3 = value.toCharArray();\r\n        for (int i = 0; i < chars_test3.length; i++) {\r\n            int charValue = (int) chars_test3[i];\r\n            // 判断是全角字符\r\n            if (charValue >= 65281 && charValue <= 65374 || charValue == 12288) {\r\n                result = true;\r\n                break;\r\n            }\r\n//            // 判断是半角字符\r\n//            else if (charValue >= 33 && charValue <= 126 || charValue == 32) {\r\n//                System.out.println(\"半角  \" + (char) charValue);\r\n//            }\r\n//            else{\r\n//                System.out.println(\"其他  \" + (char) charValue);\r\n//            }\r\n        }\r\n        return result;\r\n    }\r\n}",
-          "columns": [
-            2
-          ],
-          "columnNames": [
-            "type"
-          ]
         }
       },
-      "open": false,
-      "dirtyDataLimit": 0,
+      "open": true,
+      "dirtyDataLimit": 3,
       "modelId": "1813094540080443393",
+      "modelName": "离线质检数据",
       "dsId": "1795689697682472962",
       "dsName": "mysql-血缘测试来源库",
       "resource": "device",
       "resourceComment": "驱鸟设备表\r\n",
       "metricApi": "http://172.16.11.151/api/quality/receive/jsonObject",
-      "jobMode": "streaming",
+      "warningApi": "http://172.16.11.151/api/ottomi/node/manage/quality/analysis/notice",
+      "jobMode": "batch",
       "deptId": "1",
       "deptName": "大数据中心",
       "tenantId": "100",
       "createBy": "1504364842681118722",
+      "preview": false,
       "result_table_name": "ot_7b4084548a9446209b8d9b6264a43c1c",
       "ottomi_node_type": "QualityAnalysis",
       "source_table_name": [
@@ -93,7 +73,7 @@
   ],
   "sink": [
     {
-      "plugin_name": "Void",
+      "plugin_name": "Console",
       "source_table_name": "ot_7b4084548a9446209b8d9b6264a43c1c",
       "ottomi_node_type": "VoidSink"
     }

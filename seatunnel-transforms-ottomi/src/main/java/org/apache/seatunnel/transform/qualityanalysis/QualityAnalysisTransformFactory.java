@@ -42,8 +42,15 @@ public class QualityAnalysisTransformFactory implements TableTransformFactory {
                         QualityAnalysisTransformConfig.RULE_INFO,
                         QualityAnalysisTransformConfig.MODEL_ID,
                         QualityAnalysisTransformConfig.DATASOURCE_ID,
+                        QualityAnalysisTransformConfig.DATASOURCE_NAME,
+                        QualityAnalysisTransformConfig.DEPT_ID,
+                        QualityAnalysisTransformConfig.DEPT_NAME,
+                        QualityAnalysisTransformConfig.CREATE_BY,
+                        QualityAnalysisTransformConfig.TENANT_ID,
+                        QualityAnalysisTransformConfig.JOB_MODE,
                         QualityAnalysisTransformConfig.RESOURCE,
-                        QualityAnalysisTransformConfig.METRIC_API)
+                        QualityAnalysisTransformConfig.METRIC_API,
+                        QualityAnalysisTransformConfig.WARNING_API)
                 .build();
     }
 

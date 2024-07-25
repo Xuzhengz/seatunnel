@@ -49,6 +49,11 @@ public class QualityAnalysisTransformConfig implements Serializable {
                     .stringType()
                     .noDefaultValue()
                     .withDescription("platform model id");
+    public static final Option<String> MODEL_NAME =
+            Options.key("modelName")
+                    .stringType()
+                    .noDefaultValue()
+                    .withDescription("platform model name");
     public static final Option<String> DATASOURCE_ID =
             Options.key("dsId").stringType().noDefaultValue().withDescription("platform dsId id");
     public static final Option<String> DATASOURCE_NAME =
@@ -71,6 +76,11 @@ public class QualityAnalysisTransformConfig implements Serializable {
                     .stringType()
                     .noDefaultValue()
                     .withDescription("metric api,collect quality result to analysis");
+    public static final Option<String> WARNING_API =
+            Options.key("warningApi")
+                    .stringType()
+                    .noDefaultValue()
+                    .withDescription("warning api,send dirty data warning notice");
     public static final Option<String> JOB_MODE =
             Options.key("jobMode")
                     .stringType()
@@ -84,4 +94,9 @@ public class QualityAnalysisTransformConfig implements Serializable {
             Options.key("tenantId").stringType().noDefaultValue().withDescription("tenant id");
     public static final Option<String> CREATE_BY =
             Options.key("createBy").stringType().noDefaultValue().withDescription("create id");
+    public static final Option<Boolean> IS_PREVIEW =
+            Options.key("preview")
+                    .booleanType()
+                    .defaultValue(false)
+                    .withDescription("is preview data");
 }
