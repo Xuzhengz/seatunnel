@@ -1,0 +1,54 @@
+{
+  "env": {
+    "job.name": "文本文件输出测试",
+    "job.mode": "batch"
+  },
+  "preHandler": [
+
+  ],
+  "source": [
+    {
+      "plugin_name": "FakeSource",
+      "resourceType": "nosql",
+      "row.num": 100,
+      "schema": {
+        "table": "ottomi",
+        "fields": {
+          "id": "string",
+          "name": "string"
+        }
+      },
+      "resources": [
+        "ottomi"
+      ],
+      "result_table_name": "ot_547a5338dd494638a8cfc2157f4fd06f",
+      "ottomi_node_type": "FakeSource"
+    }
+  ],
+  "transform": [
+
+  ],
+  "sink": [
+    {
+      "file_format_type": "text",
+      "field_delimiter": ",",
+      "custom_filename": true,
+      "file_name_expression": "text_test",
+      "is_enable_transaction": false,
+      "batch_size": 1000000000,
+      "plugin_name": "S3File",
+      "bucket": "s3a://ottomi",
+      "fs.s3a.endpoint": "http://172.16.11.131:9000",
+      "fs.s3a.aws.credentials.provider": "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider",
+      "access_key": "P7HpCVa0Eth8X3dM",
+      "secret_key": "xxM9cJL5QKqq9M7jvwkQ5LJgsQSVvIay",
+      "tmp_path": "/tmp/ottomi",
+      "path": "/file-node/download/1793520703906430978/text/",
+      "result_table_name": "ot_8e1b8b2321db40cc8b62667b0ac794f1",
+      "ottomi_node_type": "TextSink",
+      "source_table_name": [
+        "ot_547a5338dd494638a8cfc2157f4fd06f"
+      ]
+    }
+  ]
+}
