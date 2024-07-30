@@ -15,26 +15,9 @@
  * limitations under the License.
  */
 
-package org.apache.seatunnel.connectors.seatunnel.kafka.state;
+package org.apache.seatunnel.connectors.seatunnel.eventstore.config;
 
-import org.apache.seatunnel.connectors.seatunnel.kafka.source.KafkaSourceSplit;
-
-import java.io.Serializable;
-import java.util.Set;
-
-public class KafkaSourceState implements Serializable {
-
-    private Set<KafkaSourceSplit> assignedSplit;
-
-    public KafkaSourceState(Set<KafkaSourceSplit> assignedSplit) {
-        this.assignedSplit = assignedSplit;
-    }
-
-    public Set<KafkaSourceSplit> getAssignedSplit() {
-        return assignedSplit;
-    }
-
-    public void setAssignedSplit(Set<KafkaSourceSplit> assignedSplit) {
-        this.assignedSplit = assignedSplit;
-    }
+public enum MessageFormatErrorHandleWay {
+    FAIL,
+    SKIP,
 }

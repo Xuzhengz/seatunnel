@@ -31,7 +31,8 @@ public class SeaTunnelEngineExample {
 
     public static void main(String[] args)
             throws FileNotFoundException, URISyntaxException, CommandException {
-        String configurePath = args.length > 0 ? args[0] : "/json-config/s3/fake-s3.json";
+        String configurePath =
+                args.length > 0 ? args[0] : "/json-config/eventstore/eventstore-console.json";
         String configFile = getTestConfigFile(configurePath);
         ClientCommandArgs clientCommandArgs = new ClientCommandArgs();
         clientCommandArgs.setConfigFile(configFile);

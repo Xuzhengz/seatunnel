@@ -15,26 +15,19 @@
  * limitations under the License.
  */
 
-package org.apache.seatunnel.connectors.seatunnel.kafka.exception;
+package org.apache.seatunnel.connectors.seatunnel.eventstore.exception;
 
 import org.apache.seatunnel.common.exception.SeaTunnelErrorCode;
 
-public enum KafkaConnectorErrorCode implements SeaTunnelErrorCode {
-    VERSION_INCOMPATIBLE("KAFKA-01", "Incompatible KafkaProducer version"),
-    GET_TRANSACTIONMANAGER_FAILED("KAFKA-02", "Get transactionManager in KafkaProducer failed"),
-    ADD_SPLIT_CHECKPOINT_FAILED("KAFKA-03", "Add the split checkpoint state to reader failed"),
-    ADD_SPLIT_BACK_TO_ENUMERATOR_FAILED(
-            "KAFKA-04",
-            "Add a split back to the split enumerator failed,it will only happen when a SourceReader failed"),
-    CONSUME_THREAD_RUN_ERROR(
-            "KAFKA-05", "Error occurred when the kafka consumer thread was running"),
-    CONSUME_DATA_FAILED("KAFKA-06", "Kafka failed to consume data"),
-    CONSUMER_CLOSE_FAILED("KAFKA-07", "Kafka failed to close consumer");
+public enum EventStoreConnectorErrorCode implements SeaTunnelErrorCode {
+    VERSION_INCOMPATIBLE("EventStore-01", "Incompatible KafkaProducer version"),
+    CONSUME_DATA_FAILED("EventStore-02", "Kafka failed to consume data"),
+    CONSUMER_CLOSE_FAILED("EventStore-03", "Kafka failed to close consumer");
 
     private final String code;
     private final String description;
 
-    KafkaConnectorErrorCode(String code, String description) {
+    EventStoreConnectorErrorCode(String code, String description) {
         this.code = code;
         this.description = description;
     }

@@ -15,31 +15,21 @@
  * limitations under the License.
  */
 
-package org.apache.seatunnel.connectors.seatunnel.kafka.config;
+package org.apache.seatunnel.connectors.seatunnel.eventstore.split;
 
-public enum StartMode {
-    EARLIEST("earliest"),
+import org.apache.seatunnel.api.source.SourceSplit;
 
-    GROUP_OFFSETS("group_offsets"),
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
 
-    LATEST("latest"),
-
-    TIMESTAMP("timestamp"),
-
-    SPECIFIC_OFFSETS("specific_offsets");
-
-    private String mode;
-
-    StartMode(String mode) {
-        this.mode = mode;
-    }
-
-    public String getMode() {
-        return mode;
-    }
+@Getter
+@Setter
+@AllArgsConstructor
+public class EventStoreSplit implements SourceSplit {
 
     @Override
-    public String toString() {
-        return mode;
+    public String splitId() {
+        return "";
     }
 }

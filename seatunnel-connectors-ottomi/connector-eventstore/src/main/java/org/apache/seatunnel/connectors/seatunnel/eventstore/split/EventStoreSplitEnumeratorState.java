@@ -15,9 +15,8 @@
  * limitations under the License.
  */
 
-package org.apache.seatunnel.connectors.seatunnel.kafka.config;
+package org.apache.seatunnel.connectors.seatunnel.eventstore.split;
 
-public enum MessageFormat {
-    JSON,
-    TEXT
-}
+import java.io.Serializable;
+
+public class EventStoreSplitEnumeratorState implements Serializable {}
