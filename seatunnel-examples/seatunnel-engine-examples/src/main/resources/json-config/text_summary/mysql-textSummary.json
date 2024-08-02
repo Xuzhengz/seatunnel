@@ -1,0 +1,52 @@
+{
+  "env": {
+    "parallelism": 1,
+    "job.name": "文本总结测试",
+    "job.mode": "batch"
+  },
+  "preHandler": [],
+  "source": [
+    {
+      "plugin_name": "Jdbc",
+      "dsId": "1795689697682472962",
+      "dsName": "mysql-血缘测试来源库",
+      "dsType": "mysql",
+      "resourceType": "table",
+      "driver": "com.mysql.cj.jdbc.Driver",
+      "connection_check_timeout_sec": 100,
+      "table_list": [
+        {
+          "table_path": "source.text",
+          "query": "SELECT\n `content`\nFROM\n `source`.`text`"
+        }
+      ],
+      "database": "source",
+      "url": "jdbc:mysql://172.16.11.135:3306/source?remarks=true&useInformationSchema=true&useCursorFetch=true&defaultFetchSize=2048&rewriteBatchedStatements=true",
+      "user": "root",
+      "password": "1qaz@WSX",
+      "resources": [
+        "text"
+      ],
+      "result_table_name": "ot_4641c64816c441d6b6d9968d319b0436",
+      "ottomi_node_type": "JdbcSource"
+    }
+  ],
+  "transform": [
+    {
+      "plugin_name": "Sql",
+      "query": "select content,TEXT_SUMMARY(content,'http://172.16.8.79:8090/nlp/abstract') as text from ot_4641c64816c441d6b6d9968d319b0436",
+      "result_table_name": "ot_0d2db8dd4eac433b82be87a66b2308ad",
+      "ottomi_node_type": "dx_textSummary",
+      "source_table_name": [
+        "ot_4641c64816c441d6b6d9968d319b0436"
+      ]
+    }
+  ],
+  "sink": [
+    {
+      "plugin_name": "Void",
+      "source_table_name": "ot_0d2db8dd4eac433b82be87a66b2308ad",
+      "ottomi_node_type": "VoidSink"
+    }
+  ]
+}

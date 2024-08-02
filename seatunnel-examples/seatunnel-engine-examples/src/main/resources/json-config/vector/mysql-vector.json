@@ -1,0 +1,54 @@
+{
+  "env": {
+    "parallelism": 1,
+    "job.name": "向量转换测试",
+    "job.mode": "batch"
+  },
+  "preHandler": [
+
+  ],
+  "source": [
+    {
+      "plugin_name": "Jdbc",
+      "dsId": "1795689697682472962",
+      "dsName": "mysql-血缘测试来源库",
+      "dsType": "mysql",
+      "resourceType": "table",
+      "driver": "com.mysql.cj.jdbc.Driver",
+      "connection_check_timeout_sec": 100,
+      "table_list": [
+        {
+          "table_path": "source.device",
+          "query": "SELECT\n `device_id`,\n `name`,\n `type`,\n `longitude`,\n `latitude`,\n `height`,\n `radius`,\n `distance`,\n `service_address`,\n `status`,\n `term_type`,\n `properties`,\n `runway_name`,\n `direction`,\n `runway_code`,\n `delay`\nFROM\n `source`.`device`"
+        }
+      ],
+      "database": "source",
+      "url": "jdbc:mysql://172.16.11.135:3306/source?remarks=true&useInformationSchema=true&useCursorFetch=true&defaultFetchSize=2048&rewriteBatchedStatements=true",
+      "user": "root",
+      "password": "1qaz@WSX",
+      "resources": [
+        "device"
+      ],
+      "result_table_name": "ot_3f1ffe7a58024aec96c08b126a9ce922",
+      "ottomi_node_type": "JdbcSource"
+    }
+  ],
+  "transform": [
+    {
+      "plugin_name": "Sql",
+      "query": "select VECTOR(device_id,'http://172.16.8.79:8090/nlp/embedding') as device_id,name,type,longitude,latitude,height,radius,distance,service_address,status,term_type,properties,runway_name,direction,runway_code,delay,VECTOR(name,'http://172.16.8.79:8090/nlp/embedding') as n1 from ot_3f1ffe7a58024aec96c08b126a9ce922",
+      "result_table_name": "ot_3643fbe81c48436292d70479ca388b11",
+      "ottomi_node_type": "dx_vector",
+      "source_table_name": [
+        "ot_3f1ffe7a58024aec96c08b126a9ce922"
+      ]
+    }
+  ],
+  "sink": [
+    {
+      "plugin_name": "Void",
+      "source_table_name": "ot_3643fbe81c48436292d70479ca388b11",
+      "ottomi_node_type": "VoidSink"
+    }
+  ]
+}
