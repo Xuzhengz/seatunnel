@@ -31,7 +31,7 @@ public class SeaTunnelEngineExample {
 
     public static void main(String[] args)
             throws FileNotFoundException, URISyntaxException, CommandException {
-        String configurePath = args.length > 0 ? args[0] : "/json-config/vector/mysql-vector.json";
+        String configurePath = args.length > 0 ? args[0] : "/json-config/mysql/mysql-multi.json";
         String configFile = getTestConfigFile(configurePath);
         ClientCommandArgs clientCommandArgs = new ClientCommandArgs();
         clientCommandArgs.setConfigFile(configFile);
@@ -39,7 +39,7 @@ public class SeaTunnelEngineExample {
         clientCommandArgs.setJobName(Paths.get(configFile).getFileName().toString());
         // Change Execution Mode to CLUSTER to use client mode, before do this, you should start
         // SeaTunnelEngineServerExample
-        clientCommandArgs.setMasterType(MasterType.LOCAL);
+        clientCommandArgs.setMasterType(MasterType.CLUSTER);
         SeaTunnel.run(clientCommandArgs.buildCommand());
     }
 
