@@ -148,6 +148,11 @@
             <artifactId>connector-eventstore</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.seatunnel</groupId>
+            <artifactId>connector-elasticsearch</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!--   驱动   -->
         <dependency>
             <groupId>mysql</groupId>

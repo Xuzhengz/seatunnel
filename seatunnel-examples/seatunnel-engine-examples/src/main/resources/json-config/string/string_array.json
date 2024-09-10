@@ -1,0 +1,37 @@
+{
+  "env": {
+    "execution.parallelism": "1",
+    "job.mode": "BATCH"
+  },
+  "source": [
+    {
+      "plugin_name": "jdbc",
+      "url": "jdbc:postgresql://172.16.11.83:5432/oceandatum?currentSchema=dw_label",
+      "password": "puser",
+      "user": "puser",
+      "driver": "org.postgresql.Driver",
+      "query": "SELECT \"id\",\"name\",\"pid\",\"age\",\"time\" FROM \"dw_label\".\"relation_test_person\" WHERE 1=1  order by \"time\"",
+      "result_table_name": "fake"
+    }
+  ],
+  "transform": [
+    {
+      "plugin_name": "sql",
+      "source_table_name": "fake",
+      "result_table_name": "fake2",
+      "query": "SELECT id,STRING_ARRAY('id','name','pid') as test FROM fake "
+    }
+  ],
+  "sink": [
+    {
+      "plugin_name": "elasticsearch",
+      "hosts": [
+        "172.16.11.71:9200"
+      ],
+      "index": "relation_data",
+      "primary_keys": [
+        "id"
+      ]
+    }
+  ]
+}
