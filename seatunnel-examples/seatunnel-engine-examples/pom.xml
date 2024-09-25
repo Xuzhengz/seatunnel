@@ -153,6 +153,11 @@
             <artifactId>connector-elasticsearch</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.seatunnel</groupId>
+            <artifactId>connector-redis</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!--   驱动   -->
         <dependency>
             <groupId>mysql</groupId>
@@ -187,7 +192,12 @@
         <dependency>
             <groupId>io.transwarp.inceptor</groupId>
             <artifactId>inceptor-jdbc</artifactId>
-            <version>6.0.3</version>
+            <version>8.37.3</version>
+        </dependency>
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+            <version>4.2.2</version>
         </dependency>
     </dependencies>
 </project>

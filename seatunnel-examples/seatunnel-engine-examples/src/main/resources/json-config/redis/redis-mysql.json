@@ -6,19 +6,34 @@
   },
   "source": [
     {
-      "plugin_name": "Jdbc",
-      "driver": "com.mysql.cj.jdbc.Driver",
-      "connection_check_timeout_sec": 100,
-      "table_list": [
-        {
-          "table_path": "source.device",
-          "query": "SELECT\n `device_id`,\n `name`,\n `type`,\n `longitude`,\n `latitude`,\n `height`,\n `radius`,\n `distance`,\n `service_address`,\n `status`,\n `term_type`,\n `properties`,\n `runway_name`,\n `direction`,\n `runway_code`,\n `delay`\nFROM\n `source`.`device`"
+      "plugin_name": "Redis",
+      "host": "172.16.11.135",
+      "port": 6379,
+      "keys": "key_test*",
+      "data_type": "list",
+      "db_num": 0,
+      "format": "json",
+      "schema": {
+        "fields": {
+          "device_id": "string",
+          "name": "string",
+          "type": "string",
+          "longitude": "string",
+          "latitude": "string",
+          "height": "string",
+          "radius": "string",
+          "distance": "string",
+          "service_address": "string",
+          "status": "string",
+          "term_type": "string",
+          "properties": "string",
+          "runway_name": "string",
+          "direction": "string",
+          "runway_code": "string",
+          "delay": "string",
+          "create_time": "string"
         }
-      ],
-      "database": "source",
-      "url": "jdbc:mysql://172.16.11.135:3306/source?remarks=true&useInformationSchema=true&useCursorFetch=true&defaultFetchSize=2048&rewriteBatchedStatements=true",
-      "user": "root",
-      "password": "1qaz@WSX",
+      },
       "result_table_name": "ot_be27db5f584f45ae8c1c16e909394fe6"
     }
   ],
@@ -54,7 +69,7 @@
       "redis_host": "172.16.11.135",
       "redis_port": 6379,
       "redis_db_num": 0,
-      "redis_key": "scan",
+      "redis_key": "scan1",
       "source_table_name": [
         "ot_be27db5f584f45ae8c1c16e909394fe6"
       ],

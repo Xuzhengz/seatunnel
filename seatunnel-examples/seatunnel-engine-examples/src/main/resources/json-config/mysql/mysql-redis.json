@@ -1,0 +1,39 @@
+{
+  "env": {
+    "parallelism": 1,
+    "job.name": "离线扫描数据",
+    "job.mode": "batch"
+  },
+  "source": [
+    {
+      "plugin_name": "Jdbc",
+      "driver": "com.mysql.cj.jdbc.Driver",
+      "connection_check_timeout_sec": 100,
+      "table_list": [
+        {
+          "table_path": "source.device",
+          "query": "SELECT\n `device_id`,\n `name`,\n `type`,\n `longitude`,\n `latitude`,\n `height`,\n `radius`,\n `distance`,\n `service_address`,\n `status`,\n `term_type`,\n `properties`,\n `runway_name`,\n `direction`,\n `runway_code`,\n `delay`\nFROM\n `source`.`device`"
+        }
+      ],
+      "database": "source",
+      "url": "jdbc:mysql://172.16.11.135:3306/source?remarks=true&useInformationSchema=true&useCursorFetch=true&defaultFetchSize=2048&rewriteBatchedStatements=true",
+      "user": "root",
+      "password": "1qaz@WSX",
+      "result_table_name": "ot_7b4084548a9446209b8d9b6264a43c1c"
+    }
+  ],
+  "transform": [
+  ],
+  "sink": [
+    {
+      "plugin_name": "Redis",
+      "host": "172.16.11.135",
+      "port": 6379,
+      "key": "list",
+      "data_type": "list",
+      "source_table_name": [
+        "ot_7b4084548a9446209b8d9b6264a43c1c"
+      ]
+    }
+  ]
+}

@@ -67,6 +67,11 @@
             <artifactId>bcprov-jdk15to18</artifactId>
             <version>1.69</version>
         </dependency>
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+            <version>4.2.2</version>
+        </dependency>
 
         <!-- jdbc驱动-->
         <dependency>
