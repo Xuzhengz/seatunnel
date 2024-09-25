@@ -33,7 +33,7 @@ import java.io.Serializable;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class MetricEntity implements Serializable {
+public class DataScanConfig implements Serializable {
 
     private Dict ruleInfos;
     private String redisHost;

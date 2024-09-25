@@ -189,11 +189,11 @@
             <artifactId>opengauss-jdbc</artifactId>
             <version>3.1.1-og</version>
         </dependency>
-        <dependency>
-            <groupId>io.transwarp.inceptor</groupId>
-            <artifactId>inceptor-jdbc</artifactId>
-            <version>8.37.3</version>
-        </dependency>
+        <!--        <dependency>-->
+        <!--            <groupId>io.transwarp.inceptor</groupId>-->
+        <!--            <artifactId>inceptor-jdbc</artifactId>-->
+        <!--            <version>8.37.3</version>-->
+        <!--        </dependency>-->
         <dependency>
             <groupId>redis.clients</groupId>
             <artifactId>jedis</artifactId>

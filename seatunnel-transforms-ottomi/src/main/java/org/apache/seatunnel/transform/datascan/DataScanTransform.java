@@ -24,6 +24,10 @@ import org.apache.seatunnel.api.table.catalog.TableSchema;
 import org.apache.seatunnel.api.table.type.RowKind;
 import org.apache.seatunnel.api.table.type.SeaTunnelRow;
 import org.apache.seatunnel.transform.common.AbstractCatalogSupportTransform;
+import org.apache.seatunnel.transform.datascan.metrics.DataScanFieldMetrics;
+import org.apache.seatunnel.transform.datascan.metrics.DataScanMetrics;
+import org.apache.seatunnel.transform.datascan.metrics.DataScanRowMetrics;
+import org.apache.seatunnel.transform.datascan.metrics.DataScanTableMetrics;
 
 import cn.hutool.core.lang.Console;
 import cn.hutool.core.lang.Dict;
@@ -35,20 +39,16 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 public class DataScanTransform extends AbstractCatalogSupportTransform {
 
     public static final String PLUGIN_NAME = "DataScan";
+
     // 配置类
-    private MetricEntity entity;
-    // 指标信息
-    private Map<String, Object> metricsMap;
+    private DataScanConfig dataScanConfig;
     // 是否运行
     private static boolean RUNNING = true;
 
@@ -58,17 +58,19 @@ public class DataScanTransform extends AbstractCatalogSupportTransform {
     }
 
     public DataScanTransform(@NonNull ReadonlyConfig config, @NonNull CatalogTable catalogTable) {
+        // 多并行度也只执行一次
         super(catalogTable);
         // 初始化配置信息
         initConfig(config);
-        // 初始化统计类
-        initMetric();
+        // 初始化指标信息
+        DataScanMetrics scanMetrics = DataScanMetrics.getInstance();
+        scanMetrics.initMetrics(dataScanConfig.getRuleInfos());
     }
 
     private void initConfig(ReadonlyConfig config) {
         try {
-            entity =
-                    MetricEntity.builder()
+            dataScanConfig =
+                    DataScanConfig.builder()
                             .ruleInfos(
                                     JSONUtil.toBean(
                                             config.getOptional(DataScanTransformConfig.RULE_INFO)
@@ -96,90 +98,39 @@ public class DataScanTransform extends AbstractCatalogSupportTransform {
         }
     }
 
-    private void initMetric() {
-        try {
-            metricsMap = new ConcurrentHashMap<>();
-            // table level
-            Map<String, Object> tableMetric = new HashMap<>();
-            tableMetric.put(Constants.DEAL_DATA_NUM, 0);
-            tableMetric.put(Constants.NEAT_DATA_NUM, 0);
-            tableMetric.put(Constants.DIRTY_DATA_NUM, 0);
-            metricsMap.put(Constants.TABLE_LEVEL, tableMetric);
-            // row level
-            Map<String, Object> rowMetric = new HashMap<>();
-            for (Map.Entry<String, Object> entry : entity.getRuleInfos().entrySet()) {
-                Map<String, Object> ruleMetric = new HashMap<>();
-                String ruleId = entry.getKey();
-                String fieldLabel = "";
-                if (ruleId.contains(":")) {
-                    String[] split = ruleId.split(":");
-                    ruleId = split[0];
-                    fieldLabel = split[1];
-                }
-                JSONObject value = (JSONObject) entry.getValue();
-                String ruleName = value.getStr(Constants.RULE_NAME);
-                List<String> columns = value.getBeanList(Constants.COLUMN_NAMES, String.class);
-                for (String column : columns) {
-                    Map<String, Object> columnMetric = new HashMap<>();
-                    columnMetric.put(Constants.RULE_NAME, ruleName);
-                    columnMetric.put(Constants.DEAL_DATA_NUM, 0);
-                    columnMetric.put(Constants.NEAT_DATA_NUM, 0);
-                    columnMetric.put(Constants.DIRTY_DATA_NUM, 0);
-                    columnMetric.put(Constants.FIELD_LABEL_ID, fieldLabel);
-                    ruleMetric.put(column, columnMetric);
-                }
-                rowMetric.put(ruleId, ruleMetric);
-            }
-            metricsMap.put(Constants.ROW_LEVEL, rowMetric);
-            log.info("初始化metricsMap：{}", metricsMap);
-        } catch (Exception e) {
-            throw new RuntimeException("init metric config error：", e);
-        }
-    }
-
     private boolean runCheck(String rule, SeaTunnelRow inputRow) {
-        log.info("规则id：" + rule);
         RowKind rowKind = inputRow.getRowKind();
         List<Boolean> results = new ArrayList<>();
-        JSONObject obj = (JSONObject) entity.getRuleInfos().getObj(rule);
+        JSONObject obj = (JSONObject) dataScanConfig.getRuleInfos().getObj(rule);
         String ruleType = obj.getStr(Constants.RULE_TYPE);
-        log.info("规则类型：" + ruleType);
         String ruleCode = obj.getStr(Constants.RULE_CODE);
-        log.info("规则Code：" + ruleCode);
-        List<Integer> columns = obj.getByPath(Constants.COLUMNS, List.class);
-        log.info("字段下标索引：" + columns);
         List<String> columnNames = obj.getByPath(Constants.COLUMN_NAMES, List.class);
-        log.info("字段下标名称索引：" + columnNames);
+        // doCheck
         IRuleHandler ruleHandler = RuleFactory.getRule(ruleType, ruleCode);
-        log.info("metricsMap：" + metricsMap);
-        JSONObject rowLevel = new JSONObject(metricsMap.get(Constants.ROW_LEVEL));
-        JSONObject ruleLevel = rowLevel.getJSONObject(rule);
-        log.info("当前规则Id：" + rule);
-        log.info("当前规则结构：" + ruleLevel);
-        for (int i = 0; i < columns.size(); i++) {
-            Object value = inputRow.getField(i);
+        DataScanMetrics scanMetrics = DataScanMetrics.getInstance();
+        DataScanRowMetrics dataScanRowMetrics =
+                scanMetrics.getDataScanRowMetrics().stream()
+                        .filter(s -> s.getRuleId().equals(rule))
+                        .findFirst()
+                        .get();
+        List<DataScanFieldMetrics> dataScanFieldMetrics =
+                dataScanRowMetrics.getDataScanFieldMetrics();
+        for (DataScanFieldMetrics dataScanFieldMetric : dataScanFieldMetrics) {
+            String fieldName = dataScanFieldMetric.getFieldName();
+            int index = columnNames.indexOf(fieldName);
+            Object value = inputRow.getField(index);
             boolean result = ruleHandler.doCheck((String.valueOf(value)));
             results.add(result);
+            // do insert type data
             if (RowKind.INSERT.equals(rowKind)) {
-                log.info("当前字段名称：" + columnNames.get(i));
-                JSONObject columnLevel = ruleLevel.getJSONObject(columnNames.get(i));
-                log.info("当前字段数据结构：" + columnLevel.toString());
-                columnLevel.set(
-                        Constants.DEAL_DATA_NUM, columnLevel.getLong(Constants.DEAL_DATA_NUM) + 1);
+                dataScanFieldMetric.getDealDataNum().incrementAndGet();
                 if (result) {
-                    columnLevel.set(
-                            Constants.NEAT_DATA_NUM,
-                            columnLevel.getLong(Constants.NEAT_DATA_NUM) + 1);
+                    dataScanFieldMetric.getNeatDataNum().incrementAndGet();
                 } else {
-                    columnLevel.set(
-                            Constants.DIRTY_DATA_NUM,
-                            columnLevel.getLong(Constants.DIRTY_DATA_NUM) + 1);
+                    dataScanFieldMetric.getDirtyDataNum().incrementAndGet();
                 }
-                ruleLevel.set(columnNames.get(i), columnLevel);
             }
         }
-        rowLevel.set(rule, ruleLevel);
-        metricsMap.put(Constants.ROW_LEVEL, rowLevel);
         // simple rule check result
         return !results.contains(false);
     }
@@ -193,9 +144,9 @@ public class DataScanTransform extends AbstractCatalogSupportTransform {
                 RUNNING = false;
                 // close redis
                 RedisClient.getInstance(
-                                entity.getRedisHost(),
-                                entity.getRedisPort(),
-                                entity.getRedisPassword())
+                                dataScanConfig.getRedisHost(),
+                                dataScanConfig.getRedisPort(),
+                                dataScanConfig.getRedisPassword())
                         .close();
             }
         }
@@ -203,9 +154,12 @@ public class DataScanTransform extends AbstractCatalogSupportTransform {
 
     private void sendMetric() {
         try {
+            DataScanMetrics metrics = DataScanMetrics.getInstance();
             RedisClient.getInstance(
-                            entity.getRedisHost(), entity.getRedisPort(), entity.getRedisPassword())
-                    .set(entity.getRedisKey(), JSONUtil.toJsonStr(metricsMap));
+                            dataScanConfig.getRedisHost(),
+                            dataScanConfig.getRedisPort(),
+                            dataScanConfig.getRedisPassword())
+                    .set(dataScanConfig.getRedisKey(), metrics.getMetrics());
         } catch (Exception e) {
             Console.error("send data scan metric error：" + e.getMessage());
         }
@@ -214,7 +168,7 @@ public class DataScanTransform extends AbstractCatalogSupportTransform {
     @Override
     protected SeaTunnelRow transformRow(SeaTunnelRow inputRow) {
         // check info
-        Set<String> rules = entity.getRuleInfos().keySet();
+        Set<String> rules = dataScanConfig.getRuleInfos().keySet();
         List<Boolean> results = new ArrayList<>();
         for (String rule : rules) {
             // rule level collect check result info
@@ -229,16 +183,14 @@ public class DataScanTransform extends AbstractCatalogSupportTransform {
             rowCheckResult = true;
         }
         // update metrics
-        JSONObject tableLevel = new JSONObject(metricsMap.get(Constants.TABLE_LEVEL));
-        tableLevel.set(Constants.DEAL_DATA_NUM, tableLevel.getLong(Constants.DEAL_DATA_NUM) + 1);
+        DataScanMetrics scanMetrics = DataScanMetrics.getInstance();
+        DataScanTableMetrics dataScanTableMetrics = scanMetrics.getDataScanTableMetrics();
+        dataScanTableMetrics.getDealDataNum().incrementAndGet();
         if (rowCheckResult) {
-            tableLevel.set(
-                    Constants.NEAT_DATA_NUM, tableLevel.getLong(Constants.NEAT_DATA_NUM) + 1);
+            dataScanTableMetrics.getNeatDataNum().incrementAndGet();
         } else {
-            tableLevel.set(
-                    Constants.DIRTY_DATA_NUM, tableLevel.getLong(Constants.DIRTY_DATA_NUM) + 1);
+            dataScanTableMetrics.getDirtyDataNum().incrementAndGet();
         }
-        metricsMap.put(Constants.TABLE_LEVEL, tableLevel);
         return inputRow;
     }
 
