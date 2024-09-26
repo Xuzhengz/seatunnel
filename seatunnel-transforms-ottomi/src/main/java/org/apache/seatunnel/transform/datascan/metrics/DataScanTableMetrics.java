@@ -2,6 +2,7 @@ package org.apache.seatunnel.transform.datascan.metrics;
 
 import lombok.Data;
 
+import java.io.Serializable;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -9,7 +10,8 @@ import java.util.concurrent.atomic.AtomicLong;
  * @date 2024/9/25 下午8:01
  */
 @Data
-public class DataScanTableMetrics {
+public class DataScanTableMetrics implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     private AtomicLong dealDataNum = new AtomicLong(0L);
     private AtomicLong neatDataNum = new AtomicLong(0L);

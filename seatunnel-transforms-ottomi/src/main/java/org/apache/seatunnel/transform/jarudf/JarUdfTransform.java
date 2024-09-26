@@ -24,7 +24,7 @@ import org.apache.seatunnel.api.table.catalog.PhysicalColumn;
 import org.apache.seatunnel.api.table.type.BasicType;
 import org.apache.seatunnel.transform.common.MultipleFieldOutputTransform;
 import org.apache.seatunnel.transform.common.SeaTunnelRowAccessor;
-import org.apache.seatunnel.transform.common.SecurityTools;
+import org.apache.seatunnel.transform.common.utils.security.SecurityUtils;
 
 import cn.hutool.core.util.ReflectUtil;
 import cn.hutool.db.Db;
@@ -106,9 +106,9 @@ public class JarUdfTransform extends MultipleFieldOutputTransform {
                 config.getOptional(JarUdfTransformConfig.JAR_CONNECTION_PROPERTIES).get();
         SimpleDataSource simpleDataSource =
                 new SimpleDataSource(
-                        SecurityTools.decrypt(props.get(JAR_DATASOURCE_URL)),
-                        SecurityTools.decrypt(props.get(JAR_DATASOURCE_USER)),
-                        SecurityTools.decrypt(props.get(JAR_DATASOURCE_PASSWORD)));
+                        SecurityUtils.decrypt(props.get(JAR_DATASOURCE_URL)),
+                        SecurityUtils.decrypt(props.get(JAR_DATASOURCE_USER)),
+                        SecurityUtils.decrypt(props.get(JAR_DATASOURCE_PASSWORD)));
         Db use = DbUtil.use(simpleDataSource);
         Entity entity = use.queryOne(QUERY_SQL, props.get(JAR_ID));
         byte[] jarStream = (byte[]) entity.get(JAR_COLUMN);

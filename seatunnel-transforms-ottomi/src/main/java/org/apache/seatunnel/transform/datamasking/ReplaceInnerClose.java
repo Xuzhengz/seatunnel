@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.seatunnel.transform.desensitize;
+package org.apache.seatunnel.transform.datamasking;
 
 import org.apache.seatunnel.api.table.type.BasicType;
 import org.apache.seatunnel.api.table.type.SeaTunnelDataType;
@@ -23,15 +23,14 @@ import org.apache.seatunnel.transform.sql.zeta.ZetaUDF;
 import cn.hutool.core.util.StrUtil;
 import com.google.auto.service.AutoService;
 
-import java.util.Arrays;
 import java.util.List;
 
 @AutoService(ZetaUDF.class)
-public class ReplaceOuteropen implements ZetaUDF {
+public class ReplaceInnerClose implements ZetaUDF {
 
     @Override
     public String functionName() {
-        return "REPLACE_OUTEROPEN";
+        return "REPLACE_INNERCLOSE";
     }
 
     @Override
@@ -46,27 +45,17 @@ public class ReplaceOuteropen implements ZetaUDF {
         String data = String.valueOf(args.get(1));
         int before = Integer.parseInt(args.get(2).toString());
         int after = Integer.parseInt(args.get(3).toString());
-        return remainFromXToY(data, before, after, replace);
-    }
-
-    // 保留自x至y
-    public static String remainFromXToY(String str, int n, int m, String replacement) {
-        if (StrUtil.isEmpty(str) || n < 0 || m < 0 || m >= str.length() || n > m) {
-            return str;
+        if (StrUtil.isNotEmpty(replace) && StrUtil.isNotEmpty(data)) {
+            // 遮盖前x-1
+            String stayFrom = StrUtil.replace(data, 0, before - 1, replace);
+            // 遮盖后y-1
+            data =
+                    StrUtil.replace(
+                            stayFrom,
+                            stayFrom.length() - (data.length() - after),
+                            stayFrom.length(),
+                            replace);
         }
-        StringBuilder result = new StringBuilder();
-        for (int i = 0; i < str.length(); i++) {
-            if (i < n || i > m) {
-                result.append(replacement); // 替换字符
-            } else {
-                result.append(str.charAt(i)); // 保留原字符
-            }
-        }
-        return result.toString();
-    }
-
-    public static void main(String[] args) {
-        ReplaceOuteropen replaceOuteropen = new ReplaceOuteropen();
-        System.out.println(replaceOuteropen.evaluate(Arrays.asList("#", "哈哈哈哈哈哈", 2, 5)));
+        return data;
     }
 }

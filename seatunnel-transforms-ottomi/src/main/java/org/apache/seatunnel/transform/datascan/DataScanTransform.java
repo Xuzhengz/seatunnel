@@ -31,12 +31,14 @@ import org.apache.seatunnel.transform.datascan.metrics.DataScanTableMetrics;
 
 import cn.hutool.core.lang.Console;
 import cn.hutool.core.lang.Dict;
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.oceandatum.quality.common.rulebase.IRuleHandler;
 import com.oceandatum.quality.common.rulebase.RuleFactory;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import redis.clients.jedis.Jedis;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,22 +51,27 @@ public class DataScanTransform extends AbstractCatalogSupportTransform {
 
     // 配置类
     private DataScanConfig dataScanConfig;
-    // 是否运行
-    private static boolean RUNNING = true;
+    // 指标类
+    private DataScanMetrics scanMetrics;
+    private final ReadonlyConfig readonlyConfig;
 
     @Override
     public String getPluginName() {
         return PLUGIN_NAME;
     }
 
-    public DataScanTransform(@NonNull ReadonlyConfig config, @NonNull CatalogTable catalogTable) {
-        // 多并行度也只执行一次
-        super(catalogTable);
+    @Override
+    public void open() {
         // 初始化配置信息
-        initConfig(config);
+        initConfig(readonlyConfig);
         // 初始化指标信息
-        DataScanMetrics scanMetrics = DataScanMetrics.getInstance();
+        scanMetrics = new DataScanMetrics();
         scanMetrics.initMetrics(dataScanConfig.getRuleInfos());
+    }
+
+    public DataScanTransform(@NonNull ReadonlyConfig config, @NonNull CatalogTable catalogTable) {
+        super(catalogTable);
+        this.readonlyConfig = config;
     }
 
     private void initConfig(ReadonlyConfig config) {
@@ -107,7 +114,7 @@ public class DataScanTransform extends AbstractCatalogSupportTransform {
         List<String> columnNames = obj.getByPath(Constants.COLUMN_NAMES, List.class);
         // doCheck
         IRuleHandler ruleHandler = RuleFactory.getRule(ruleType, ruleCode);
-        DataScanMetrics scanMetrics = DataScanMetrics.getInstance();
+        log.info("scanMetrics:{}", JSONUtil.toJsonStr(scanMetrics));
         DataScanRowMetrics dataScanRowMetrics =
                 scanMetrics.getDataScanRowMetrics().stream()
                         .filter(s -> s.getRuleId().equals(rule))
@@ -138,30 +145,29 @@ public class DataScanTransform extends AbstractCatalogSupportTransform {
     @Override
     public void close() {
         synchronized (DataScanTransform.class) {
-            if (RUNNING) {
-                // last send metrics
-                sendMetric();
-                RUNNING = false;
-                // close redis
-                RedisClient.getInstance(
-                                dataScanConfig.getRedisHost(),
-                                dataScanConfig.getRedisPort(),
-                                dataScanConfig.getRedisPassword())
-                        .close();
+            // last send metrics
+            Jedis jedis = new Jedis(dataScanConfig.getRedisHost(), dataScanConfig.getRedisPort());
+            if (StrUtil.isNotEmpty(dataScanConfig.getRedisPassword())) {
+                jedis.auth(dataScanConfig.getRedisPassword());
             }
+            sendMetric(jedis);
         }
     }
 
-    private void sendMetric() {
+    private void sendMetric(Jedis jedis) {
         try {
-            DataScanMetrics metrics = DataScanMetrics.getInstance();
-            RedisClient.getInstance(
-                            dataScanConfig.getRedisHost(),
-                            dataScanConfig.getRedisPort(),
-                            dataScanConfig.getRedisPassword())
-                    .set(dataScanConfig.getRedisKey(), metrics.getMetrics());
+            boolean exists = jedis.exists(dataScanConfig.getRedisKey());
+            if (!exists) {
+                jedis.set(dataScanConfig.getRedisKey(), scanMetrics.getMetrics());
+            } else {
+                JSONObject metrics = new JSONObject(jedis.get(dataScanConfig.getRedisKey()));
+                String newMetics = scanMetrics.updateMetrics(metrics);
+                jedis.set(dataScanConfig.getRedisKey(), newMetics);
+            }
         } catch (Exception e) {
             Console.error("send data scan metric error：" + e.getMessage());
+        } finally {
+            jedis.close();
         }
     }
 
@@ -183,7 +189,6 @@ public class DataScanTransform extends AbstractCatalogSupportTransform {
             rowCheckResult = true;
         }
         // update metrics
-        DataScanMetrics scanMetrics = DataScanMetrics.getInstance();
         DataScanTableMetrics dataScanTableMetrics = scanMetrics.getDataScanTableMetrics();
         dataScanTableMetrics.getDealDataNum().incrementAndGet();
         if (rowCheckResult) {

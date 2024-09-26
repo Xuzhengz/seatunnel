@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.seatunnel.transform.desensitize;
+package org.apache.seatunnel.transform.datamasking;
 
 import org.apache.seatunnel.api.table.type.BasicType;
 import org.apache.seatunnel.api.table.type.SeaTunnelDataType;
@@ -26,11 +26,11 @@ import com.google.auto.service.AutoService;
 import java.util.List;
 
 @AutoService(ZetaUDF.class)
-public class ReplaceInnerclose implements ZetaUDF {
+public class ReplaceOuterOpen implements ZetaUDF {
 
     @Override
     public String functionName() {
-        return "REPLACE_INNERCLOSE";
+        return "REPLACE_OUTEROPEN";
     }
 
     @Override
@@ -45,34 +45,9 @@ public class ReplaceInnerclose implements ZetaUDF {
         String data = String.valueOf(args.get(1));
         int before = Integer.parseInt(args.get(2).toString());
         int after = Integer.parseInt(args.get(3).toString());
-        return replaceFirstAndLast(data, before, after, replace);
-    }
-
-    public static String replaceFirstAndLast(String str, int n, int m, String replacement) {
-        if (StrUtil.isEmpty(str) || n < 0 || m < 0) {
-            return str;
+        if (StrUtil.isNotEmpty(replace) && StrUtil.isNotEmpty(data)) {
+            data = StrUtil.replace(data, before, data.length() - after, replace);
         }
-        int len = str.length();
-
-        // 如果 n + m 超过了字符串长度，返回全是替换字符的字符串
-        if (n + m >= len) {
-            StringBuffer stringBuffer = new StringBuffer();
-            for (int i = 0; i < len; i++) {
-                stringBuffer.append(replacement);
-            }
-            return stringBuffer.toString();
-        }
-        // 替换前 n 个字符
-        StringBuilder result = new StringBuilder();
-        for (int i = 0; i < n; i++) {
-            result.append(replacement);
-        }
-        // 中间部分
-        result.append(str, n, len - m);
-        // 替换后 m 个字符
-        for (int i = 0; i < m; i++) {
-            result.append(replacement);
-        }
-        return result.toString();
+        return data;
     }
 }

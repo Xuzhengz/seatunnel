@@ -1,13 +1,13 @@
 package org.apache.seatunnel.transform.datascan.metrics;
 
 import org.apache.seatunnel.transform.datascan.Constants;
-import org.apache.seatunnel.transform.datascan.RedisClient;
 
 import cn.hutool.core.lang.Dict;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import lombok.Data;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -18,73 +18,46 @@ import java.util.Map;
  * @date 2024/9/25 下午8:01
  */
 @Data
-public class DataScanMetrics {
-
-    private static volatile DataScanMetrics dataScanMetrics;
+public class DataScanMetrics implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     private DataScanTableMetrics dataScanTableMetrics;
     private List<DataScanRowMetrics> dataScanRowMetrics;
-    private boolean init = false;
-
-    private DataScanMetrics() {}
-
-    public static DataScanMetrics getInstance() {
-        if (dataScanMetrics == null) {
-            synchronized (RedisClient.class) {
-                if (dataScanMetrics == null) {
-                    dataScanMetrics = new DataScanMetrics();
-                }
-            }
-        }
-        return dataScanMetrics;
-    }
-
 
     public void initMetrics(Dict ruleInfos) {
-        if (!init) {
-            DataScanMetrics scanMetrics = getInstance();
-            // table
-            DataScanTableMetrics dataScanTableMetrics = new DataScanTableMetrics();
-            scanMetrics.setDataScanTableMetrics(dataScanTableMetrics);
-            // row
-            List<DataScanRowMetrics> dataScanRowMetricsList =
-                    new ArrayList<>(ruleInfos.keySet().size());
-            for (Map.Entry<String, Object> ruleEntry : ruleInfos.entrySet()) {
-                String ruleId = ruleEntry.getKey();
-                String fieldLabel = "";
-                if (ruleId.contains(":")) {
-                    String[] split = ruleId.split(":");
-                    ruleId = split[0];
-                    fieldLabel = split[1];
-                }
-                DataScanRowMetrics dataScanRowMetrics = new DataScanRowMetrics(ruleId);
-                JSONObject value = (JSONObject) ruleEntry.getValue();
-                String ruleName = value.getStr(Constants.RULE_NAME);
-                List<String> columns = value.getBeanList(Constants.COLUMN_NAMES, String.class);
-                List<DataScanFieldMetrics> dataScanFieldMetricsList =
-                        new ArrayList<>(columns.size());
-                for (String column : columns) {
-                    DataScanFieldMetrics dataScanFieldMetrics =
-                            new DataScanFieldMetrics(ruleName, column, fieldLabel);
-                    dataScanFieldMetricsList.add(dataScanFieldMetrics);
-                }
-                dataScanRowMetrics.setDataScanFieldMetrics(dataScanFieldMetricsList);
-                dataScanRowMetricsList.add(dataScanRowMetrics);
+        // table
+        DataScanTableMetrics dataScanTableMetrics = new DataScanTableMetrics();
+        this.setDataScanTableMetrics(dataScanTableMetrics);
+        // row
+        List<DataScanRowMetrics> dataScanRowMetricsList =
+                new ArrayList<>(ruleInfos.keySet().size());
+        for (Map.Entry<String, Object> ruleEntry : ruleInfos.entrySet()) {
+            String ruleId = ruleEntry.getKey();
+            DataScanRowMetrics dataScanRowMetrics = new DataScanRowMetrics(ruleId);
+            JSONObject value = (JSONObject) ruleEntry.getValue();
+            String ruleName = value.getStr(Constants.RULE_NAME);
+            String fieldLabel = value.getStr(Constants.FIELD_LABEL_ID);
+            List<String> columns = value.getBeanList(Constants.COLUMN_NAMES, String.class);
+            List<DataScanFieldMetrics> dataScanFieldMetricsList = new ArrayList<>(columns.size());
+            for (String column : columns) {
+                DataScanFieldMetrics dataScanFieldMetrics =
+                        new DataScanFieldMetrics(ruleName, column, fieldLabel);
+                dataScanFieldMetricsList.add(dataScanFieldMetrics);
             }
-            scanMetrics.setDataScanRowMetrics(dataScanRowMetricsList);
-            init = true;
+            dataScanRowMetrics.setDataScanFieldMetrics(dataScanFieldMetricsList);
+            dataScanRowMetricsList.add(dataScanRowMetrics);
         }
+        this.setDataScanRowMetrics(dataScanRowMetricsList);
     }
 
     public String getMetrics() {
         Map<String, Object> metrics = new HashMap<>();
-        DataScanMetrics scanMetrics = getInstance();
         // set table metrics
-        DataScanTableMetrics table = scanMetrics.getDataScanTableMetrics();
+        DataScanTableMetrics table = this.getDataScanTableMetrics();
         JSONObject tableMetrics = new JSONObject(table);
         metrics.put("table", tableMetrics);
         // set row metrics
-        List<DataScanRowMetrics> scanRowMetricsList = scanMetrics.getDataScanRowMetrics();
+        List<DataScanRowMetrics> scanRowMetricsList = this.getDataScanRowMetrics();
         Map<String, Object> row = new HashMap<>();
         for (DataScanRowMetrics scanRowMetrics : scanRowMetricsList) {
             List<DataScanFieldMetrics> dataScanFieldMetrics =
@@ -99,5 +72,40 @@ public class DataScanMetrics {
         }
         metrics.put("row", row);
         return JSONUtil.toJsonStr(metrics);
+    }
+
+    public String updateMetrics(JSONObject metrics) {
+        JSONObject table = metrics.getJSONObject(Constants.TABLE_LEVEL);
+        JSONObject row = metrics.getJSONObject(Constants.ROW_LEVEL);
+        // update table
+        DataScanTableMetrics dataScanTableMetrics = getDataScanTableMetrics();
+        dataScanTableMetrics.getDealDataNum().getAndAdd(table.getLong(Constants.DEAL_DATA_NUM));
+        dataScanTableMetrics.getNeatDataNum().getAndAdd(table.getLong(Constants.NEAT_DATA_NUM));
+        dataScanTableMetrics.getDirtyDataNum().getAndAdd(table.getLong(Constants.DIRTY_DATA_NUM));
+        // update row
+        List<DataScanRowMetrics> scanRowMetricsList = getDataScanRowMetrics();
+        for (String ruleId : row.keySet()) {
+            JSONObject fieldObj = row.getJSONObject(ruleId);
+            DataScanRowMetrics dataScanRowMetrics =
+                    scanRowMetricsList.stream()
+                            .filter(s -> s.getRuleId().equals(ruleId))
+                            .findFirst()
+                            .get();
+            List<DataScanFieldMetrics> dataScanFieldMetrics =
+                    dataScanRowMetrics.getDataScanFieldMetrics();
+            for (DataScanFieldMetrics dataScanFieldMetric : dataScanFieldMetrics) {
+                JSONObject field = fieldObj.getJSONObject(dataScanFieldMetric.getFieldName());
+                dataScanFieldMetric
+                        .getDealDataNum()
+                        .getAndAdd(field.getLong(Constants.DEAL_DATA_NUM));
+                dataScanFieldMetric
+                        .getNeatDataNum()
+                        .getAndAdd(field.getLong(Constants.NEAT_DATA_NUM));
+                dataScanFieldMetric
+                        .getDirtyDataNum()
+                        .getAndAdd(field.getLong(Constants.DIRTY_DATA_NUM));
+            }
+        }
+        return getMetrics();
     }
 }

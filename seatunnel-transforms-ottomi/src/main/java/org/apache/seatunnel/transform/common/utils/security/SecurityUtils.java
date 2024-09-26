@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.seatunnel.transform.common;
+package org.apache.seatunnel.transform.common.utils.security;
 
 import java.security.MessageDigest;
 import java.util.Base64;
@@ -24,7 +24,7 @@ import java.util.Random;
  * @author xuzhengzhou
  * @date 2024/6/7 17:57
  */
-public class SecurityTools {
+public class SecurityUtils {
     private static final int ROUNDS = 3;
     private static final int BLOCK_SIZE = 16;
     private static final String SECURITY_KEY = "ottomiKey";
