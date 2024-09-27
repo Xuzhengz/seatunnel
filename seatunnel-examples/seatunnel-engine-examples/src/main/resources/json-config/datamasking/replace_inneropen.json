@@ -1,0 +1,43 @@
+{
+  "env": {
+    "parallelism": 1,
+    "job.name": "字符掩盖_保留前n至后m",
+    "job.mode": "batch"
+  },
+  "source": [
+    {
+      "plugin_name": "Jdbc",
+      "driver": "com.mysql.cj.jdbc.Driver",
+      "connection_check_timeout_sec": 100,
+      "table_list": [
+        {
+          "table_path": "source.device",
+          "query": "SELECT\n `device_id` \nFROM\n `source`.`device`"
+        }
+      ],
+      "database": "source",
+      "url": "jdbc:mysql://172.16.11.135:3306/source?remarks=true&useInformationSchema=true&useCursorFetch=true&defaultFetchSize=2048&rewriteBatchedStatements=true",
+      "user": "root",
+      "password": "1qaz@WSX",
+      "result_table_name": "source"
+    }
+  ],
+  "transform": [
+    {
+      "plugin_name": "Sql",
+      "query": "select REPLACE_INNEROPEN('*',`device_id`,1,1) as device_id from source",
+      "source_table_name": [
+        "source"
+      ],
+      "result_table_name": "transform"
+    }
+  ],
+  "sink": [
+    {
+      "plugin_name": "Console",
+      "source_table_name": [
+        "transform"
+      ]
+    }
+  ]
+}

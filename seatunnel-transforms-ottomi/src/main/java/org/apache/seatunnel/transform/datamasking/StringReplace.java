@@ -20,10 +20,12 @@ import org.apache.seatunnel.api.table.type.BasicType;
 import org.apache.seatunnel.api.table.type.SeaTunnelDataType;
 import org.apache.seatunnel.transform.sql.zeta.ZetaUDF;
 
+import cn.hutool.core.lang.func.Func1;
 import cn.hutool.core.util.StrUtil;
 import com.google.auto.service.AutoService;
 
 import java.util.List;
+import java.util.regex.Matcher;
 
 @AutoService(ZetaUDF.class)
 public class StringReplace implements ZetaUDF {
@@ -54,7 +56,8 @@ public class StringReplace implements ZetaUDF {
 
         if (StrUtil.isNotEmpty(replace) && StrUtil.isNotEmpty(data) && StrUtil.isNotEmpty(match)) {
             if (index_all == type) {
-                data = StrUtil.replace(data, 0, match, replace, false);
+                data = StrUtil.replace(data, match, (Func1<Matcher, String>) parameter -> replace);
+                //                data = StrUtil.replace(data, 0, match, replace, false);
             } else if (index_before == type) {
                 data = StrUtil.replace(data, 0, data.indexOf(match), replace);
             } else if (index_after == type) {
