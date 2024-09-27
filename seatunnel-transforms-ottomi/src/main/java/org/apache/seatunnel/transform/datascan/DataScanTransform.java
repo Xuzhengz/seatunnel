@@ -114,7 +114,6 @@ public class DataScanTransform extends AbstractCatalogSupportTransform {
         List<String> columnNames = obj.getByPath(Constants.COLUMN_NAMES, List.class);
         // doCheck
         IRuleHandler ruleHandler = RuleFactory.getRule(ruleType, ruleCode);
-        log.info("scanMetrics:{}", JSONUtil.toJsonStr(scanMetrics));
         DataScanRowMetrics dataScanRowMetrics =
                 scanMetrics.getDataScanRowMetrics().stream()
                         .filter(s -> s.getRuleId().equals(rule))
