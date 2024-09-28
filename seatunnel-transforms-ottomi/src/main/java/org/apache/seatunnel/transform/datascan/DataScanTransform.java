@@ -42,7 +42,9 @@ import redis.clients.jedis.Jedis;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class DataScanTransform extends AbstractCatalogSupportTransform {
@@ -54,6 +56,7 @@ public class DataScanTransform extends AbstractCatalogSupportTransform {
     // 指标类
     private DataScanMetrics scanMetrics;
     private final ReadonlyConfig readonlyConfig;
+    private Map<String, List<DataScanFieldMetrics>> ruleMap;
 
     @Override
     public String getPluginName() {
@@ -67,6 +70,12 @@ public class DataScanTransform extends AbstractCatalogSupportTransform {
         // 初始化指标信息
         scanMetrics = new DataScanMetrics();
         scanMetrics.initMetrics(dataScanConfig.getRuleInfos());
+        ruleMap =
+                scanMetrics.getDataScanRowMetrics().stream()
+                        .collect(
+                                Collectors.toMap(
+                                        DataScanRowMetrics::getRuleId,
+                                        DataScanRowMetrics::getDataScanFieldMetrics));
     }
 
     public DataScanTransform(@NonNull ReadonlyConfig config, @NonNull CatalogTable catalogTable) {
@@ -114,13 +123,7 @@ public class DataScanTransform extends AbstractCatalogSupportTransform {
         List<String> columnNames = obj.getByPath(Constants.COLUMN_NAMES, List.class);
         // doCheck
         IRuleHandler ruleHandler = RuleFactory.getRule(ruleType, ruleCode);
-        DataScanRowMetrics dataScanRowMetrics =
-                scanMetrics.getDataScanRowMetrics().stream()
-                        .filter(s -> s.getRuleId().equals(rule))
-                        .findFirst()
-                        .get();
-        List<DataScanFieldMetrics> dataScanFieldMetrics =
-                dataScanRowMetrics.getDataScanFieldMetrics();
+        List<DataScanFieldMetrics> dataScanFieldMetrics = ruleMap.get(rule);
         for (DataScanFieldMetrics dataScanFieldMetric : dataScanFieldMetrics) {
             String fieldName = dataScanFieldMetric.getFieldName();
             int index = columnNames.indexOf(fieldName);
@@ -144,12 +147,16 @@ public class DataScanTransform extends AbstractCatalogSupportTransform {
     @Override
     public void close() {
         synchronized (DataScanTransform.class) {
-            // last send metrics
-            Jedis jedis = new Jedis(dataScanConfig.getRedisHost(), dataScanConfig.getRedisPort());
-            if (StrUtil.isNotEmpty(dataScanConfig.getRedisPassword())) {
-                jedis.auth(dataScanConfig.getRedisPassword());
+            // other subplan task need table metrics > 0
+            if (scanMetrics.getDataScanTableMetrics().getDealDataNum().get() > 0) {
+                // last send metrics
+                Jedis jedis =
+                        new Jedis(dataScanConfig.getRedisHost(), dataScanConfig.getRedisPort());
+                if (StrUtil.isNotEmpty(dataScanConfig.getRedisPassword())) {
+                    jedis.auth(dataScanConfig.getRedisPassword());
+                }
+                sendMetric(jedis);
             }
-            sendMetric(jedis);
         }
     }
 
