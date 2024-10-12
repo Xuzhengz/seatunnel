@@ -35,7 +35,7 @@
   "transform": [
     {
       "plugin_name": "Sql",
-      "query": "select device_id,name,type,longitude,latitude,height,radius,distance,service_address,status,term_type,properties,runway_name,direction,runway_code,delay,Entity_Extraction(name,type,'事件,地名,组织机构,手机号,人名','http://172.16.8.79:8090/nlp/ner') as entity from ot_e070fce7e27944ed84e07f48feb0a3d0",
+      "query": "select CASE_WHEN(device_id,'{\"oldValue\":9,\"newValue\":10}','{\"oldValue\":10,\"newValue\":100}') as device_id,REPLACE(CAST(name as STRING),'asd','sad') as name,type,longitude,latitude,height,radius,distance,service_address,status,term_type,properties,runway_name,direction,runway_code,delay from ot_e070fce7e27944ed84e07f48feb0a3d0",
       "result_table_name": "ot_72d34b05c19449f49a090599c9c86b6d",
       "ottomi_node_type": "dx_entityExtraction",
       "source_table_name": [
@@ -45,7 +45,7 @@
   ],
   "sink": [
     {
-      "plugin_name": "Void",
+      "plugin_name": "Console",
       "source_table_name": "ot_72d34b05c19449f49a090599c9c86b6d",
       "ottomi_node_type": "VoidSink"
     }

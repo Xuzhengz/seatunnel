@@ -1,65 +1,98 @@
 {
   "env": {
-    "job.name": "数据质量检测",
-    "job.mode": "batch"
+    "checkpoint.interval": 5000,
+    "parallelism": 1,
+    "job.name": "实时质检测试",
+    "job.mode": "streaming"
   },
-  "preHandler": [],
+  "preHandler": [
+
+  ],
   "source": [
     {
-      "plugin_name": "Jdbc",
-      "dsId": "1795692521564749825",
-      "dsName": "mysql-血缘测试数据湖",
-      "dsType": "mysql",
-      "resourceType": "table",
+      "plugin_name": "MySQL-CDC",
+      "dsId": "1665589567605940226",
+      "base-url": "jdbc:mysql://172.16.11.131:3306/test1mysql?remarks=true&useInformationSchema=true&useCursorFetch=true&defaultFetchSize=2048&rewriteBatchedStatements=true",
       "driver": "com.mysql.cj.jdbc.Driver",
-      "connection_check_timeout_sec": 100,
-      "query": "SELECT\n `id`,\n `name`,\n `type`,\n `longitude`,\n `latitude`,\n `height`,\n `radius`,\n `distance`,\n `service_address`,\n `status`,\n `term_type`,\n `properties`,\n `runway_name`,\n `direction`,\n `runway_code`,\n `delay`\nFROM\n `ods_device`",
-      "database": "ods",
-      "url": "jdbc:mysql://172.16.11.135:3306/ods?remarks=true&useInformationSchema=true&useCursorFetch=true&defaultFetchSize=2048&rewriteBatchedStatements=true",
-      "user": "root",
-      "password": "1qaz@WSX",
-      "resources": [
-        "ods_device"
+      "username": "mysql",
+      "password": "mysql",
+      "startup.mode": "initial",
+      "exactly_once": true,
+      "database-names": [
+        "test1mysql"
       ],
-      "result_table_name": "ot_0dc155147e574e55a4795d12a6d11d38"
+      "table-names": [
+        "test1mysql.device"
+      ],
+      "result_table_name": "ot_c51459e8fd3041f884aed4defb7d0d2c"
     }
   ],
   "transform": [
     {
-      "plugin_name": "QualityRule",
-      "columns_index": [
-        0,
-        3
-      ],
-      "rule_id": "1343460072446623745",
-      "quality_result": "true",
-      "api_url": "http://172.16.11.245/api/quality/rule/extern/",
-      "result_table_name": "ot_18f4129871a24ee7b026ce2cac8489e2",
+      "plugin_name": "QualityAnalysis",
+      "ruleInfo": {
+        "1390942615550693377": {
+          "ruleName": "空值检查（报告）",
+          "ruleType": "glue_java",
+          "ruleCode": "package com.oceandatum.quality.common.rulebase;\r\n\r\npublic class TestRule extends AbstractRule{\r\n\r\n    @Override\r\n    public boolean doCheck(String value) {\r\n        if(value.equals(\"\")||value==\"\"||value==\"null\"||value==null||\"\".equals(value.trim())){\r\n            return false;\r\n        }\r\n        return true;\r\n    }\r\n\r\n    @Override\r\n    public boolean doCheck(String value, String target) {\r\n        return false;\r\n    }\r\n}",
+          "columns": [
+            0
+          ],
+          "columnNames": [
+            "device_id"
+          ]
+        }
+      },
+      "open": true,
+      "dirtyDataLimit": 10,
+      "modelId": "1845004835875692546",
+      "modelName": "实时质检测试",
+      "dsId": "1665589567605940226",
+      "dsName": "test1MySQL",
+      "resource": "device",
+      "resourceComment": "驱鸟设备表\r\n",
+      "metricApi": "http://172.16.11.245/api/quality/receive/jsonObject",
+      "warningApi": "http://172.16.11.245/api/ottomi/node/manage/quality/analysis/notice",
+      "jobMode": "streaming",
+      "deptId": "1",
+      "deptName": "大数据中心",
+      "tenantId": "100",
+      "createBy": "1504364842681118722",
+      "preview": false,
+      "result_table_name": "ot_5a50ee5bda9a45a4b0b0649b5e3a7506",
+      "ottomi_node_type": "QualityAnalysis",
       "source_table_name": [
-        "ot_0dc155147e574e55a4795d12a6d11d38"
+        "ot_c51459e8fd3041f884aed4defb7d0d2c"
+      ]
+    },
+    {
+      "plugin_name": "Sql",
+      "query": "select device_id,name,type,longitude,latitude,height,radius,distance,service_address,status,term_type,properties,runway_code,runway_name,direction,check_result  from ot_5a50ee5bda9a45a4b0b0649b5e3a7506 where 1=1  and check_result='true'",
+      "result_table_name": "ot_f027f78b8ae24d2894396f09ebf9df25",
+      "ottomi_node_type": "dx_dataFilter",
+      "source_table_name": [
+        "ot_5a50ee5bda9a45a4b0b0649b5e3a7506"
       ]
     }
   ],
   "sink": [
     {
       "plugin_name": "Jdbc",
+      "dsId": "1795692670324129793",
       "driver": "com.mysql.cj.jdbc.Driver",
       "url": "jdbc:mysql://172.16.11.135:3306/dwd?remarks=true&useInformationSchema=true&useCursorFetch=true&defaultFetchSize=2048&rewriteBatchedStatements=true",
       "user": "root",
       "password": "1qaz@WSX",
       "primary_keys": [
-        "id"
+        "device_id"
       ],
       "batch_size": 2048,
       "generate_sink_sql": true,
       "database": "dwd",
-      "table": "dwd.quality_test",
+      "table": "dwd.dwd_quality_device",
       "schema_save_mode": "ERROR_WHEN_SCHEMA_NOT_EXIST",
-      "data_save_mode": "CUSTOM_PROCESSING",
-      "custom_sql ": "truncate table quality_test",
-      "result_table_name": "ot_27af8c1bd95042d6998b3c5df7b0de62",
       "source_table_name": [
-        "ot_18f4129871a24ee7b026ce2cac8489e2"
+        "ot_f027f78b8ae24d2894396f09ebf9df25"
       ]
     }
   ]

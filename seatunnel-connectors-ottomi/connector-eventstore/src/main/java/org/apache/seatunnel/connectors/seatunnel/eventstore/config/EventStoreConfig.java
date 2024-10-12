@@ -45,7 +45,7 @@ public class EventStoreConfig implements Serializable {
     public static final String DEFAULT_FIELD_DELIMITER = ",";
 
     public static final Option<Map<String, String>> EVENTSTORE_CONFIG =
-            Options.key("config")
+            Options.key("eventStoreConfig")
                     .mapType()
                     .noDefaultValue()
                     .withDescription(

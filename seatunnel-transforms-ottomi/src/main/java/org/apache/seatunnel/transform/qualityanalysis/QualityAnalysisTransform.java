@@ -25,6 +25,10 @@ import org.apache.seatunnel.api.table.type.BasicType;
 import org.apache.seatunnel.api.table.type.RowKind;
 import org.apache.seatunnel.transform.common.MultipleFieldOutputTransform;
 import org.apache.seatunnel.transform.common.SeaTunnelRowAccessor;
+import org.apache.seatunnel.transform.qualityanalysis.metrics.QualityAnalysisFieldMetrics;
+import org.apache.seatunnel.transform.qualityanalysis.metrics.QualityAnalysisMetrics;
+import org.apache.seatunnel.transform.qualityanalysis.metrics.QualityAnalysisRowMetrics;
+import org.apache.seatunnel.transform.qualityanalysis.metrics.QualityAnalysisTableMetrics;
 
 import cn.hutool.core.lang.Console;
 import cn.hutool.core.lang.Dict;
@@ -46,16 +50,21 @@ import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 public class QualityAnalysisTransform extends MultipleFieldOutputTransform {
 
     public static final String PLUGIN_NAME = "QualityAnalysis";
+
     // 配置类
-    private MetricEntity entity;
-    // 指标信息
-    private static Map<String, Object> metricsMap;
+    private QualityAnalysisConfig config;
+    // 指标类
+    private QualityAnalysisMetrics qualityAnalysisMetrics;
+    private final ReadonlyConfig readonlyConfig;
+    private Map<String, List<QualityAnalysisFieldMetrics>> ruleMap;
     // 脏数据量
-    private static long dirtyDataNum = 0l;
+    private static long dirtyDataNum = 0L;
     private static ScheduledExecutorService scheduledExecutorService;
 
     @Override
@@ -66,20 +75,32 @@ public class QualityAnalysisTransform extends MultipleFieldOutputTransform {
     public QualityAnalysisTransform(
             @NonNull ReadonlyConfig config, @NonNull CatalogTable catalogTable) {
         super(catalogTable);
+        this.readonlyConfig = config;
+    }
+
+    @Override
+    public void open() {
         // 初始化配置信息
-        initConfig(config);
-        // 初始化统计类
-        initMetric();
+        initConfig(readonlyConfig);
+        // 初始化指标信息
+        qualityAnalysisMetrics = new QualityAnalysisMetrics();
+        qualityAnalysisMetrics.initMetrics(config);
+        ruleMap =
+                qualityAnalysisMetrics.getQualityAnalysisRowMetrics().stream()
+                        .collect(
+                                Collectors.toMap(
+                                        QualityAnalysisRowMetrics::getRuleId,
+                                        QualityAnalysisRowMetrics::getQualityAnalysisFieldMetrics));
         // 开启统计线程
-        if (!"batch".equals(entity.getJobMode())) {
+        if (!"batch".equals(config.getJobMode())) {
             startMonitor();
         }
     }
 
     private void initConfig(ReadonlyConfig config) {
         try {
-            entity =
-                    MetricEntity.builder()
+            this.config =
+                    QualityAnalysisConfig.builder()
                             .ruleInfos(
                                     JSONUtil.toBean(
                                             config.getOptional(
@@ -146,73 +167,28 @@ public class QualityAnalysisTransform extends MultipleFieldOutputTransform {
         }
     }
 
-    private void initMetric() {
-        try {
-            metricsMap = new HashMap<>();
-            metricsMap.put(Constants.DATASOURCE_ID, entity.getDsId());
-            metricsMap.put(Constants.DATASOURCE_NAME, entity.getDsName());
-            metricsMap.put(Constants.RESOURCE, entity.getResource());
-            metricsMap.put(Constants.RESOURCE_COMMENT, entity.getResourceComment());
-            metricsMap.put(Constants.MODEL_ID, entity.getModelId());
-            metricsMap.put(Constants.QUALITY_JOB_MODE, entity.getJobMode());
-            metricsMap.put(Constants.DEPT_ID, entity.getDeptId());
-            metricsMap.put(Constants.DEPT_NAME, entity.getDeptName());
-            metricsMap.put(Constants.TENANT_ID, entity.getTenantId());
-            metricsMap.put(Constants.CREATE_BY, entity.getCreateBy());
-            // table level
-            Map<String, Object> tableMetric = new HashMap<>();
-            tableMetric.put(Constants.DEAL_DATA_NUM, 0);
-            tableMetric.put(Constants.NEAT_DATA_NUM, 0);
-            tableMetric.put(Constants.DIRTY_DATA_NUM, 0);
-            metricsMap.put(Constants.TABLE_LEVEL, tableMetric);
-            // row level
-            Map<String, Object> rowMetric = new HashMap<>();
-            for (Map.Entry<String, Object> entry : entity.getRuleInfos().entrySet()) {
-                Map<String, Object> ruleMetric = new HashMap<>();
-                String ruleId = entry.getKey();
-                JSONObject value = (JSONObject) entry.getValue();
-                String ruleName = value.getStr(Constants.RULE_NAME);
-                List<String> columns = value.getBeanList(Constants.COLUMN_NAMES, String.class);
-                columns.forEach(
-                        c -> {
-                            Map<String, Object> columnMetric = new HashMap<>();
-                            columnMetric.put(Constants.RULE_NAME, ruleName);
-                            columnMetric.put(Constants.DEAL_DATA_NUM, 0);
-                            columnMetric.put(Constants.NEAT_DATA_NUM, 0);
-                            columnMetric.put(Constants.DIRTY_DATA_NUM, 0);
-                            ruleMetric.put(c, columnMetric);
-                        });
-                rowMetric.put(ruleId, ruleMetric);
-            }
-            metricsMap.put(Constants.ROW_LEVEL, rowMetric);
-        } catch (Exception e) {
-            throw new RuntimeException("init metric config error：", e);
-        }
-    }
-
     private void startMonitor() {
         scheduledExecutorService = Executors.newScheduledThreadPool(1);
         scheduledExecutorService.scheduleAtFixedRate(
                 () ->
                         // TODO SEND STATISTICS
                         sendMetric(false),
-                10,
+                0,
                 10,
                 TimeUnit.SECONDS);
     }
 
     private void sendMetric(boolean isLast) {
         try {
-            synchronized (metricsMap) {
-                JSONObject tableLevel = new JSONObject(metricsMap.get(Constants.TABLE_LEVEL));
-                Long dealNum = tableLevel.getLong(Constants.DEAL_DATA_NUM);
-                if (dealNum > 0 || isLast) {
-                    HttpUtil.createPost(entity.getMetricApi())
-                            .body(JSONUtil.toJsonStr(metricsMap))
-                            .executeAsync();
-                    // clean
-                    initMetric();
-                }
+            AtomicLong dealDataNum =
+                    qualityAnalysisMetrics.getQualityAnalysisTableMetrics().getDealDataNum();
+
+            if (dealDataNum.get() > 0 || isLast) {
+                HttpUtil.createPost(config.getMetricApi())
+                        .body(qualityAnalysisMetrics.getMetrics(config))
+                        .execute();
+                // clean
+                qualityAnalysisMetrics.cleanMetrics();
             }
         } catch (Exception e) {
             Console.error("send quality metric error：" + e.getMessage());
@@ -222,10 +198,10 @@ public class QualityAnalysisTransform extends MultipleFieldOutputTransform {
     private void sendDirtyNotice() {
         try {
             Map<String, Object> formMap = new HashMap<>();
-            formMap.put(Constants.CREATE_BY, entity.getCreateBy());
-            formMap.put(Constants.MODEL_NAME, entity.getModelName());
-            formMap.put(Constants.RESOURCE, entity.getResource());
-            HttpUtil.createPost(entity.getWarningApi()).form(formMap).executeAsync();
+            formMap.put(Constants.CREATE_BY, config.getCreateBy());
+            formMap.put(Constants.MODEL_NAME, config.getModelName());
+            formMap.put(Constants.RESOURCE, config.getResource());
+            HttpUtil.createPost(config.getWarningApi()).form(formMap).executeAsync();
         } catch (Exception e) {
             Console.error("send dirty data notice error：" + e.getMessage());
         }
@@ -234,7 +210,7 @@ public class QualityAnalysisTransform extends MultipleFieldOutputTransform {
     @Override
     protected Object[] getOutputFieldValues(SeaTunnelRowAccessor inputRow) {
         // check info
-        Set<String> rules = entity.getRuleInfos().keySet();
+        Set<String> rules = config.getRuleInfos().keySet();
         List<Boolean> results = new ArrayList<>();
         for (String rule : rules) {
             // rule level collect check result info
@@ -250,25 +226,23 @@ public class QualityAnalysisTransform extends MultipleFieldOutputTransform {
             rowCheckResult = true;
         }
         // update metrics
-        JSONObject tableLevel = new JSONObject(metricsMap.get(Constants.TABLE_LEVEL));
-        tableLevel.set(Constants.DEAL_DATA_NUM, tableLevel.getLong(Constants.DEAL_DATA_NUM) + 1);
+        QualityAnalysisTableMetrics qualityAnalysisTableMetrics =
+                qualityAnalysisMetrics.getQualityAnalysisTableMetrics();
+        qualityAnalysisTableMetrics.getDealDataNum().incrementAndGet();
         if (rowCheckResult) {
-            tableLevel.set(
-                    Constants.NEAT_DATA_NUM, tableLevel.getLong(Constants.NEAT_DATA_NUM) + 1);
+            qualityAnalysisTableMetrics.getNeatDataNum().incrementAndGet();
         } else {
-            tableLevel.set(
-                    Constants.DIRTY_DATA_NUM, tableLevel.getLong(Constants.DIRTY_DATA_NUM) + 1);
+            qualityAnalysisTableMetrics.getDirtyDataNum().incrementAndGet();
         }
-        metricsMap.put(Constants.TABLE_LEVEL, tableLevel);
-        // send dirty data notice
-        if (entity.getDirtyDataLimit() > 0 && dirtyDataNum == entity.getDirtyDataLimit()) {
-            Console.error("dirty data has exceed config limit,please check.");
-            if (!entity.isPreview()) {
+        if (!config.isPreview()) {
+            // send dirty data notice
+            if (config.getDirtyDataLimit() > 0 && dirtyDataNum == config.getDirtyDataLimit()) {
+                Console.error("dirty data has exceed config limit,please check.");
                 sendDirtyNotice();
             }
         }
         // TODO IF OPEN THEN ADD CHECK_RESULT
-        if (entity.isOpen()) {
+        if (config.isOpen()) {
             return new Object[] {String.valueOf(rowCheckResult)};
         }
         return new Object[0];
@@ -277,43 +251,41 @@ public class QualityAnalysisTransform extends MultipleFieldOutputTransform {
     private boolean runCheck(String rule, SeaTunnelRowAccessor inputRow) {
         RowKind rowKind = inputRow.getRowKind();
         List<Boolean> results = new ArrayList<>();
-        JSONObject obj = (JSONObject) entity.getRuleInfos().getObj(rule);
-        String ruleType = obj.getStr(Constants.RULE_TYPE);
-        String ruleCode = obj.getStr(Constants.RULE_CODE);
-        List<Integer> columns = obj.getByPath(Constants.COLUMNS, List.class);
-        List<String> columnNames = obj.getByPath(Constants.COLUMN_NAMES, List.class);
+        JSONObject obj = (JSONObject) config.getRuleInfos().getObj(rule);
+        String ruleType = obj.getStr(org.apache.seatunnel.transform.datascan.Constants.RULE_TYPE);
+        String ruleCode = obj.getStr(org.apache.seatunnel.transform.datascan.Constants.RULE_CODE);
+        List<String> columnNames =
+                obj.getByPath(
+                        org.apache.seatunnel.transform.datascan.Constants.COLUMN_NAMES, List.class);
+        // doCheck
         IRuleHandler ruleHandler = RuleFactory.getRule(ruleType, ruleCode);
-        JSONObject rowLevel = new JSONObject(metricsMap.get(Constants.ROW_LEVEL));
-        JSONObject ruleLevel = rowLevel.getJSONObject(rule);
-        for (int i = 0; i < columns.size(); i++) {
-            Object value = inputRow.getField(i);
+        List<QualityAnalysisFieldMetrics> qualityAnalysisFieldMetricsList = ruleMap.get(rule);
+        for (QualityAnalysisFieldMetrics qualityAnalysisFieldMetrics :
+                qualityAnalysisFieldMetricsList) {
+            String fieldName = qualityAnalysisFieldMetrics.getFieldName();
+            int index = columnNames.indexOf(fieldName);
+            Object value = inputRow.getField(index);
             boolean result = ruleHandler.doCheck((String.valueOf(value)));
             results.add(result);
+            // do insert type data
             if (RowKind.INSERT.equals(rowKind)) {
-                JSONObject columnLevel = ruleLevel.getJSONObject(columnNames.get(i));
-                columnLevel.set(
-                        Constants.DEAL_DATA_NUM, columnLevel.getLong(Constants.DEAL_DATA_NUM) + 1);
+                qualityAnalysisFieldMetrics.getDealDataNum().incrementAndGet();
                 if (result) {
-                    columnLevel.set(
-                            Constants.NEAT_DATA_NUM,
-                            columnLevel.getLong(Constants.NEAT_DATA_NUM) + 1);
+                    qualityAnalysisFieldMetrics.getNeatDataNum().incrementAndGet();
                 } else {
-                    columnLevel.set(
-                            Constants.DIRTY_DATA_NUM,
-                            columnLevel.getLong(Constants.DIRTY_DATA_NUM) + 1);
+                    qualityAnalysisFieldMetrics.getDirtyDataNum().incrementAndGet();
                 }
-                ruleLevel.set(columnNames.get(i), columnLevel);
             }
         }
-        rowLevel.set(rule, ruleLevel);
-        metricsMap.put(Constants.ROW_LEVEL, rowLevel);
         // simple rule check result
-        return results.contains(false) ? false : true;
+        return !results.contains(false);
     }
 
     @Override
     protected Column[] getOutputColumns() {
-        if (entity.isOpen()) {
+        Boolean isOpen =
+                readonlyConfig.get(QualityAnalysisTransformConfig.OPEN_TRUE_OR_FALSE_OUTPUT);
+        if (isOpen) {
             return Arrays.stream(new String[] {Constants.CHECK_RESULT_COLUMN})
                     .map(
                             fieldName ->
@@ -331,7 +303,7 @@ public class QualityAnalysisTransform extends MultipleFieldOutputTransform {
             scheduledExecutorService.shutdownNow();
         }
         // last send metrics
-        if (!entity.isPreview()) {
+        if (!config.isPreview()) {
             sendMetric(true);
         }
     }

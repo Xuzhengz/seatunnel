@@ -23,8 +23,8 @@ import org.apache.seatunnel.api.source.Collector;
 import org.apache.seatunnel.api.source.SourceReader;
 import org.apache.seatunnel.api.table.type.SeaTunnelRow;
 import org.apache.seatunnel.connectors.seatunnel.eventstore.config.EventStoreConfig;
-import org.apache.seatunnel.connectors.seatunnel.eventstore.config.MessageFormatErrorHandleWay;
 import org.apache.seatunnel.connectors.seatunnel.eventstore.config.StartMode;
+import org.apache.seatunnel.connectors.seatunnel.eventstore.contants.Constants;
 import org.apache.seatunnel.connectors.seatunnel.eventstore.exception.EventStoreConnectorErrorCode;
 import org.apache.seatunnel.connectors.seatunnel.eventstore.exception.EventStoreConnectorException;
 import org.apache.seatunnel.connectors.seatunnel.eventstore.split.EventStoreSplit;
@@ -34,6 +34,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.serialization.StringDeserializer;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -95,15 +96,18 @@ public class EventStoreSourceReader<T> implements SourceReader<T, EventStoreSpli
                     deserializationSchema.deserialize(
                             value.getBytes(StandardCharsets.UTF_8), output);
                 } catch (Exception e) {
-                    if (MessageFormatErrorHandleWay.SKIP.equals(
-                            config.getMessageFormatErrorHandleWay())) {
-                        log.error(
-                                "Deserialize message failed, skip this message, message: {}",
-                                value);
-                    } else {
-                        throw new EventStoreConnectorException(
-                                EventStoreConnectorErrorCode.CONSUME_DATA_FAILED, e);
-                    }
+                    log.error("Deserialize message failed, skip this message, message: {}", value);
+                    //                    if (MessageFormatErrorHandleWay.SKIP.equals(
+                    //                            config.getMessageFormatErrorHandleWay())) {
+                    //                        log.error(
+                    //                                "Deserialize message failed, skip this
+                    // message, message: {}",
+                    //                                value);
+                    //                    } else {
+                    //                        throw new EventStoreConnectorException(
+                    //
+                    // EventStoreConnectorErrorCode.CONSUME_DATA_FAILED, e);
+                    //                    }
                 }
                 consumer.commitSync();
             }
@@ -136,28 +140,28 @@ public class EventStoreSourceReader<T> implements SourceReader<T, EventStoreSpli
     private void initConsumer() {
         // init config
         Properties properties = config.getEventStoreConfig();
-        //        System.setProperty("java.security.krb5.conf", properties.getProperty("krb5Conf"));
-        //        System.setProperty("java.security.auth.login.config",
-        // properties.getProperty("jaasConf"));
-        //        System.setProperty(
-        //                "zookeeper.server.principal",
-        // properties.getProperty("zookeeperPrincipal"));
-        properties.put("bootstrap.servers", config.getBootstrapServers());
-        properties.put("group.id", config.getConsumerGroup());
-        properties.put("enable.auto.commit", "false");
+        System.setProperty("java.security.krb5.conf", properties.getProperty(Constants.KRB5_PATH));
+        System.setProperty(
+                "java.security.auth.login.config", properties.getProperty(Constants.JAAS_PATH));
+        System.setProperty(
+                "zookeeper.server.principal",
+                properties.getProperty(Constants.ZOOKEEPER_PRINCIPAL));
+        Properties props = new Properties();
+        props.put("bootstrap.servers", config.getBootstrapServers());
+        props.put("group.id", config.getConsumerGroup());
+        props.put("enable.auto.commit", false);
         setStartMode(properties);
-        properties.put(
-                "key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-        properties.put(
-                "value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-        //        properties.put("security.protocol", "SASL_PLAINTEXT");// security.protocol
-        //        properties.put("sasl.mechanism", "GSSAPI");// sasl.mechanism
-        //        properties.put("sasl.kerberos.service.name", "kafka");//
-        // sasl.kerberos.service.name
-        //        properties.put("sasl.kerberos.service.principal.instance",
-        // properties.getProperty("eventStorePrincipal"));
+        props.put("key.deserializer", StringDeserializer.class.getName());
+        props.put("value.deserializer", StringDeserializer.class.getName());
+        props.put("security.protocol", "SASL_PLAINTEXT"); // security.protocol
+        props.put("sasl.mechanism", "GSSAPI"); // sasl.mechanism
+        props.put("sasl.kerberos.service.name", "kafka"); // sasl.kerberos.service.name
+        props.put(
+                "sasl.kerberos.service.principal.instance",
+                properties.getProperty(Constants.KAFKA_PRINCIPAL));
+        log.info("配置信息设置成功!");
         // create consumer
-        this.consumer = new KafkaConsumer<>(properties);
+        this.consumer = new KafkaConsumer<>(props);
         consumer.subscribe(Arrays.asList(config.getTopic()));
     }
 
@@ -171,8 +175,8 @@ public class EventStoreSourceReader<T> implements SourceReader<T, EventStoreSpli
                 properties.put("auto.offset.reset", "earliest");
             case TIMESTAMP:
                 Set<TopicPartition> assignment = consumer.assignment();
-                while (assignment.size() == 0) {
-                    consumer.poll(1000l);
+                while (assignment.isEmpty()) {
+                    consumer.poll(1000L);
                     assignment = consumer.assignment();
                 }
                 HashMap<TopicPartition, Long> topicPartitionLongHashMap = new HashMap<>();

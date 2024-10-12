@@ -33,7 +33,9 @@ import java.io.Serializable;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class MetricEntity implements Serializable {
+public class QualityAnalysisConfig implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private Dict ruleInfos;
     private boolean open;
     private long dirtyDataLimit;
