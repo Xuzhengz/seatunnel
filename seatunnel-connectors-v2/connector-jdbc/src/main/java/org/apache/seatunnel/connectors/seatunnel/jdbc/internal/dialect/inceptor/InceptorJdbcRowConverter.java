@@ -87,8 +87,7 @@ public class InceptorJdbcRowConverter extends HiveJdbcRowConverter {
                         statement.setDouble(statementIndex, (Double) fieldValue);
                         break;
                     case DECIMAL:
-                        statement.setBigDecimal(
-                                statementIndex, (BigDecimal) fieldValue);
+                        statement.setBigDecimal(statementIndex, (BigDecimal) fieldValue);
                         break;
                     case DATE:
                         LocalDate localDate = (LocalDate) fieldValue;
