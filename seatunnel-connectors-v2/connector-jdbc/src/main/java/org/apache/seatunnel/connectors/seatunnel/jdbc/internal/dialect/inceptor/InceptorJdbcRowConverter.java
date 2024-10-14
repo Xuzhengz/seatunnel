@@ -54,52 +54,56 @@ public class InceptorJdbcRowConverter extends HiveJdbcRowConverter {
                 int statementIndex = fieldIndex + 1;
                 Object fieldValue = row.getField(fieldIndex);
                 if (fieldValue == null) {
-                    statement.setObject(statementIndex, StringUtils.EMPTY);
+                    statement.setString(statementIndex, StringUtils.EMPTY);
                     continue;
                 }
                 switch (seaTunnelDataType.getSqlType()) {
                     case STRING:
-                        statement.setString(statementIndex, (String) row.getField(fieldIndex));
+                        String stringValue = String.valueOf(fieldValue);
+                        if (stringValue.contains("\r")) {
+                            stringValue = stringValue.replace("\r", StringUtils.EMPTY);
+                        }
+                        statement.setString(statementIndex, stringValue);
                         break;
                     case BOOLEAN:
-                        statement.setBoolean(statementIndex, (Boolean) row.getField(fieldIndex));
+                        statement.setBoolean(statementIndex, (Boolean) fieldValue);
                         break;
                     case TINYINT:
-                        statement.setByte(statementIndex, (Byte) row.getField(fieldIndex));
+                        statement.setByte(statementIndex, (Byte) fieldValue);
                         break;
                     case SMALLINT:
-                        statement.setShort(statementIndex, (Short) row.getField(fieldIndex));
+                        statement.setShort(statementIndex, (Short) fieldValue);
                         break;
                     case INT:
-                        statement.setInt(statementIndex, (Integer) row.getField(fieldIndex));
+                        statement.setInt(statementIndex, (Integer) fieldValue);
                         break;
                     case BIGINT:
-                        statement.setLong(statementIndex, (Long) row.getField(fieldIndex));
+                        statement.setLong(statementIndex, (Long) fieldValue);
                         break;
                     case FLOAT:
-                        statement.setFloat(statementIndex, (Float) row.getField(fieldIndex));
+                        statement.setFloat(statementIndex, (Float) fieldValue);
                         break;
                     case DOUBLE:
-                        statement.setDouble(statementIndex, (Double) row.getField(fieldIndex));
+                        statement.setDouble(statementIndex, (Double) fieldValue);
                         break;
                     case DECIMAL:
                         statement.setBigDecimal(
-                                statementIndex, (BigDecimal) row.getField(fieldIndex));
+                                statementIndex, (BigDecimal) fieldValue);
                         break;
                     case DATE:
-                        LocalDate localDate = (LocalDate) row.getField(fieldIndex);
+                        LocalDate localDate = (LocalDate) fieldValue;
                         statement.setDate(statementIndex, java.sql.Date.valueOf(localDate));
                         break;
                     case TIME:
-                        writeTime(statement, statementIndex, (LocalTime) row.getField(fieldIndex));
+                        writeTime(statement, statementIndex, (LocalTime) fieldValue);
                         break;
                     case TIMESTAMP:
-                        LocalDateTime localDateTime = (LocalDateTime) row.getField(fieldIndex);
+                        LocalDateTime localDateTime = (LocalDateTime) fieldValue;
                         statement.setTimestamp(
                                 statementIndex, java.sql.Timestamp.valueOf(localDateTime));
                         break;
                     case BYTES:
-                        statement.setBytes(statementIndex, (byte[]) row.getField(fieldIndex));
+                        statement.setBytes(statementIndex, (byte[]) fieldValue);
                         break;
                     case NULL:
                         statement.setNull(statementIndex, java.sql.Types.NULL);
@@ -107,7 +111,7 @@ public class InceptorJdbcRowConverter extends HiveJdbcRowConverter {
                     case ARRAY:
                         SeaTunnelDataType elementType =
                                 ((ArrayType) seaTunnelDataType).getElementType();
-                        Object[] array = (Object[]) row.getField(fieldIndex);
+                        Object[] array = (Object[]) fieldValue;
                         if (array == null) {
                             statement.setNull(statementIndex, java.sql.Types.ARRAY);
                             break;
