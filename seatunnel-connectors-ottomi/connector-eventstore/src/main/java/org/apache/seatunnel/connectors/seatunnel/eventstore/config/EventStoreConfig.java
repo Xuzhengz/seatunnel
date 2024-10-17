@@ -32,7 +32,7 @@ import java.util.Properties;
 public class EventStoreConfig implements Serializable {
     private String bootstrapServers;
     private String topic;
-    private Properties eventStoreConfig;
+    private Properties eventStoreConfig = new Properties();
     private String consumerGroup;
     private String format;
     private String fieldDelimiter;
@@ -40,7 +40,6 @@ public class EventStoreConfig implements Serializable {
     private Long startModeTimestamp;
     private MessageFormatErrorHandleWay messageFormatErrorHandleWay;
 
-    public static final String CONNECTOR_IDENTITY = "EventStore";
     /** The default field delimiter is “,” */
     public static final String DEFAULT_FIELD_DELIMITER = ",";
 
@@ -123,9 +122,7 @@ public class EventStoreConfig implements Serializable {
         if (config.hasPath(EVENTSTORE_CONFIG.key())) {
             Map<String, String> configMap =
                     (Map<String, String>) config.getAnyRef(EVENTSTORE_CONFIG.key());
-            configMap.forEach((key, value) -> this.eventStoreConfig.put(key, value));
-        } else {
-            this.eventStoreConfig = new Properties();
+            this.eventStoreConfig.putAll(configMap);
         }
         if (config.hasPath(CONSUMER_GROUP.key())) {
             this.consumerGroup = config.getString(CONSUMER_GROUP.key());
@@ -137,16 +134,16 @@ public class EventStoreConfig implements Serializable {
             this.fieldDelimiter = config.getString(FIELD_DELIMITER.key());
         }
         if (config.hasPath(START_MODE.key())) {
-            this.startMode = config.getEnum(StartMode.class, START_MODE.key());
+            this.startMode = StartMode.valueOf(config.getString(START_MODE.key()).toUpperCase());
         }
         if (config.hasPath(START_MODE_TIMESTAMP.key())) {
             this.startModeTimestamp = config.getLong(START_MODE_TIMESTAMP.key());
         }
         if (config.hasPath(MESSAGE_FORMAT_ERROR_HANDLE_WAY_OPTION.key())) {
             this.messageFormatErrorHandleWay =
-                    config.getEnum(
-                            MessageFormatErrorHandleWay.class,
-                            MESSAGE_FORMAT_ERROR_HANDLE_WAY_OPTION.key());
+                    MessageFormatErrorHandleWay.valueOf(
+                            config.getString(MESSAGE_FORMAT_ERROR_HANDLE_WAY_OPTION.key())
+                                    .toUpperCase());
         }
     }
 }

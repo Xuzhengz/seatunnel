@@ -1,0 +1,84 @@
+{
+  "env": {
+    "parallelism": 1,
+    "job.name": "离线质检数据",
+    "job.mode": "batch"
+  },
+  "preHandler": [
+  ],
+  "source": [
+    {
+      "plugin_name": "Jdbc",
+      "dsId": "1795689697682472962",
+      "dsName": "mysql-血缘测试来源库",
+      "dsType": "mysql",
+      "resourceType": "table",
+      "driver": "com.mysql.cj.jdbc.Driver",
+      "connection_check_timeout_sec": 100,
+      "table_list": [
+        {
+          "table_path": "source.device",
+          "query": "SELECT\n `device_id`,\n `name`,\n `type`,\n `longitude`,\n `latitude`,\n `height`,\n `radius`,\n `distance`,\n `service_address`,\n `status`,\n `term_type`,\n `properties`,\n `runway_name`,\n `direction`,\n `runway_code`,\n `delay`\nFROM\n `source`.`device`"
+        }
+      ],
+      "database": "source",
+      "url": "jdbc:mysql://172.16.11.135:3306/source?remarks=true&useInformationSchema=true&useCursorFetch=true&defaultFetchSize=2048&rewriteBatchedStatements=true",
+      "user": "root",
+      "password": "1qaz@WSX",
+      "resources": [
+        "device"
+      ],
+      "result_table_name": "ot_be27db5f584f45ae8c1c16e909394fe6",
+      "ottomi_node_type": "JdbcSource"
+    }
+  ],
+  "transform": [
+    {
+      "plugin_name": "JsonPath",
+      "columns": [
+        {
+          "src_field": "properties",
+          "path": "$.name1",
+          "dest_field": "name1",
+          "column_error_handle_way" : "SKIP"
+        },
+        {
+          "src_field": "properties",
+          "path": "$.name2",
+          "dest_field": "name2",
+          "column_error_handle_way" : "SKIP"
+        },
+        {
+          "src_field": "properties",
+          "path": "$.name3",
+          "dest_field": "name3",
+          "dest_type": "double",
+          "column_error_handle_way" : "SKIP"
+        },
+        {
+          "src_field": "properties",
+          "path": "$.name4",
+          "dest_field": "name4",
+          "dest_type": "boolean",
+          "column_error_handle_way" : "SKIP"
+        },
+        {
+          "src_field": "properties",
+          "path": "$.name5.name55",
+          "dest_field": "name55",
+          "column_error_handle_way" : "SKIP"
+        }
+      ],
+      "result_table_name": "console",
+      "source_table_name": [
+        "ot_be27db5f584f45ae8c1c16e909394fe6"
+      ]
+    }
+  ],
+  "sink": [
+    {
+      "plugin_name": "Console",
+      "source_table_name": "console"
+    }
+  ]
+}

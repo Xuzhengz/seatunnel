@@ -76,11 +76,6 @@ public class EventStoreSource
                         config,
                         EventStoreConfig.BOOTSTRAP_SERVERS.key(),
                         EventStoreConfig.TOPIC.key(),
-                        EventStoreConfig.FORMAT.key(),
-                        EventStoreConfig.CONSUMER_GROUP.key(),
-                        EventStoreConfig.START_MODE.key(),
-                        EventStoreConfig.MESSAGE_FORMAT_ERROR_HANDLE_WAY_OPTION.key(),
-                        EventStoreConfig.FIELD_DELIMITER.key(),
                         TableSchemaOptions.SCHEMA.key());
         if (!result.isSuccess()) {
             throw new EventStoreConnectorException(
@@ -126,7 +121,7 @@ public class EventStoreSource
         // TODO: format SPI
         // only support json deserializationSchema
         CatalogTable catalogTable = CatalogTableUtil.buildWithConfig(config);
-        String format = this.config.getFormat();
+        String format = this.config.getFormat().toUpperCase();
         if (MessageFormat.JSON.name().equals(format)) {
             this.deserializationSchema = new JsonDeserializationSchema(catalogTable, false, false);
         } else {

@@ -2,23 +2,20 @@
   "env": {
     "parallelism": 1,
     "job.mode": "STREAMING",
-    "checkpoint.interval": "5000"
+    "checkpoint.interval": "5000",
+    "job.retry.times": 1
   },
   "source": [
     {
-      "plugin_name": "Kafka",
-      "bootstrap.servers": "hadoop102:9092,hadoop103:9092,hadoop104:9092",
-      "topic": "quality",
-      "consumer.group": "quality",
+      "plugin_name": "EventStore",
+      "bootstrap.servers": "172.16.8.200:19092,172.16.8.201:19092,172.16.8.202:19092",
+      "topic": "ocean",
       "schema": {
         "fields": {
           "name": "string",
           "id": "int"
         }
       },
-      "start_mode": "latest",
-      "format_error_handle_way": "skip",
-      "format": "json",
       "result_table_name": "jsonPath"
     }
   ],
@@ -63,7 +60,7 @@
   "sink": [
     {
       "source_table_name": "console",
-      "plugin_name": "console"
+      "plugin_name": "Console"
     }
   ]
 }

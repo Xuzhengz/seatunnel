@@ -1,34 +1,42 @@
 {
   "env": {
-    "parallelism": 3,
+    "parallelism": 1,
     "job.mode": "STREAMING",
     "checkpoint.interval": "5000"
   },
   "source": [
     {
       "plugin_name": "EventStore",
-      "bootstrap.servers": "hadoop102:9092,hadoop103:9092,hadoop104:9092",
-      "topic": "eventstore",
-      "consumer.group": "ottomi",
+      "parallelism": 1,
+      "bootstrap.servers": "10.90.9.81:30543,10.90.9.170:30543,10.90.9.129:30543",
+      "topic": "yiyuan_iot_event",
+      "format_error_handle_way" : "fail",
+      "field_delimiter": ",",
+      "consumer.group": "weizheng_zhijian",
       "schema": {
         "fields": {
-          "id": "int",
-          "name": "string"
+          "id" : "string"
         }
       },
-      "field_delimiter": ",",
-      "start_mode": "LATEST",
-      "format_error_handle_way": "SKIP",
-      "format": "TEXT",
-      "result_table_name": "ocean"
+      "start_mode": "latest",
+      "format": "json",
+      "eventStoreConfig": {
+        "krb5Path": "/tmp/eventstore/krb5.conf",
+        "jaasPath": "/tmp/eventstore/jaas.conf",
+        "zkPrincipal": "weizheng@HKCY.TDH",
+        "principal": "tos_hkcy"
+      },
+      "result_table_name": "source"
     }
   ],
   "transform": [
   ],
   "sink": [
     {
-      "source_table_name": "ocean",
-      "plugin_name": "console"
+      "source_table_name": [
+        "source"
+      ],
+      "plugin_name": "Console"
     }
   ]
 }

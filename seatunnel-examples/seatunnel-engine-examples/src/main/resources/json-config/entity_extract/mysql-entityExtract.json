@@ -8,6 +8,7 @@
   ],
   "source": [
     {
+      "parallelism": 5,
       "plugin_name": "Jdbc",
       "dsId": "1795689697682472962",
       "dsName": "mysql-血缘测试来源库",
@@ -30,6 +31,31 @@
       ],
       "result_table_name": "ot_e070fce7e27944ed84e07f48feb0a3d0",
       "ottomi_node_type": "JdbcSource"
+    },
+    {
+      "parallelism": 3,
+      "plugin_name": "Jdbc",
+      "dsId": "1795689697682472962",
+      "dsName": "mysql-血缘测试来源库",
+      "dsType": "mysql",
+      "resourceType": "table",
+      "driver": "com.mysql.cj.jdbc.Driver",
+      "connection_check_timeout_sec": 100,
+      "table_list": [
+        {
+          "table_path": "source.device",
+          "query": "SELECT\n `device_id`,\n `name`,\n `type`,\n `longitude`,\n `latitude`,\n `height`,\n `radius`,\n `distance`,\n `service_address`,\n `status`,\n `term_type`,\n `properties`,\n `runway_name`,\n `direction`,\n `runway_code`,\n `delay`\nFROM\n `source`.`device`"
+        }
+      ],
+      "database": "source",
+      "url": "jdbc:mysql://172.16.11.135:3306/source?remarks=true&useInformationSchema=true&useCursorFetch=true&defaultFetchSize=2048&rewriteBatchedStatements=true",
+      "user": "root",
+      "password": "1qaz@WSX",
+      "resources": [
+        "device"
+      ],
+      "result_table_name": "ot_e070fce7e27944ed84e07f48feb0a3d1",
+      "ottomi_node_type": "JdbcSource"
     }
   ],
   "transform": [
@@ -47,6 +73,11 @@
     {
       "plugin_name": "Console",
       "source_table_name": "ot_72d34b05c19449f49a090599c9c86b6d",
+      "ottomi_node_type": "VoidSink"
+    },
+    {
+      "plugin_name": "Console",
+      "source_table_name": "ot_e070fce7e27944ed84e07f48feb0a3d1",
       "ottomi_node_type": "VoidSink"
     }
   ]

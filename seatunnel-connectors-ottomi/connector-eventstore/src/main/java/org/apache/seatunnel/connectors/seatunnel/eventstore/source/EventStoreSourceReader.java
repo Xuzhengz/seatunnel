@@ -97,20 +97,9 @@ public class EventStoreSourceReader<T> implements SourceReader<T, EventStoreSpli
                             value.getBytes(StandardCharsets.UTF_8), output);
                 } catch (Exception e) {
                     log.error("Deserialize message failed, skip this message, message: {}", value);
-                    //                    if (MessageFormatErrorHandleWay.SKIP.equals(
-                    //                            config.getMessageFormatErrorHandleWay())) {
-                    //                        log.error(
-                    //                                "Deserialize message failed, skip this
-                    // message, message: {}",
-                    //                                value);
-                    //                    } else {
-                    //                        throw new EventStoreConnectorException(
-                    //
-                    // EventStoreConnectorErrorCode.CONSUME_DATA_FAILED, e);
-                    //                    }
                 }
-                consumer.commitSync();
             }
+            consumer.commitAsync();
             if (Boundedness.BOUNDED.equals(context.getBoundedness())) {
                 running = false;
             }
@@ -150,7 +139,7 @@ public class EventStoreSourceReader<T> implements SourceReader<T, EventStoreSpli
         props.put("bootstrap.servers", config.getBootstrapServers());
         props.put("group.id", config.getConsumerGroup());
         props.put("enable.auto.commit", false);
-        setStartMode(properties);
+        setStartMode(props);
         props.put("key.deserializer", StringDeserializer.class.getName());
         props.put("value.deserializer", StringDeserializer.class.getName());
         props.put("security.protocol", "SASL_PLAINTEXT"); // security.protocol

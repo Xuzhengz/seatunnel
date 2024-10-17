@@ -1,0 +1,90 @@
+{
+  "env": {
+    "job.name": "离线扫描数据",
+    "job.mode": "batch",
+    "parallelism": 1
+  },
+  "source": [
+    {
+      "plugin_name": "Jdbc",
+      "driver": "com.mysql.cj.jdbc.Driver",
+      "connection_check_timeout_sec": 100,
+      "table_list": [
+        {
+          "table_path": "basics_info",
+          "query": "select * from basics_info"
+        }
+      ],
+      "database": "showdata",
+      "url": "jdbc:mysql://172.16.8.137:3306/showdata?remarks=true&useInformationSchema=true&useCursorFetch=true&defaultFetchSize=2048&rewriteBatchedStatements=true",
+      "user": "root",
+      "password": "oceanDatum",
+      "result_table_name": "basics_info_source"
+    }
+  ],
+  "transform": [
+    {
+      "plugin_name": "DataScan",
+      "rule_info": {
+        "1418122804307050497": {
+          "ruleName": "身份证",
+          "ruleType": "glue_java",
+          "ruleCode": "package com.oceandatum.quality.common.rulebase;\r\n\r\nimport java.util.HashMap;\r\nimport java.util.Map;\r\nimport java.util.regex.Matcher;\r\nimport java.util.regex.Pattern;\r\nimport cn.hutool.core.util.StrUtil;\r\n\r\n\r\npublic class IDCardRule extends AbstractRule {\r\n\r\n    private static final Map<Object,Object> CITYS = new HashMap<Object,Object>() {{\r\n        put(\"11\", \"北京\");put(\"12\", \"天津\");put(\"13\", \"河北\");put(\"14\", \"山西\");put(\"15\", \"内蒙古\");\r\n        put(\"21\", \"辽宁\");put(\"22\", \"吉林\");put(\"23\", \"黑龙江\");put(\"31\", \"上海\");put(\"32\", \"江苏\");\r\n        put(\"33\", \"浙江\");put(\"34\", \"安徽\");put(\"35\", \"福建\");put(\"36\", \"江西\");put(\"37\", \"山东\");\r\n        put(\"41\", \"河南\");put(\"42\", \"湖北\");put(\"43\", \"湖南\");put(\"44\", \"广东\");put(\"45\", \"广西\");\r\n        put(\"46\", \"海南\");put(\"50\", \"重庆\");put(\"51\", \"四川\");put(\"52\", \"贵州\");put(\"53\", \"云南\");\r\n        put(\"54\", \"西藏\");put(\"61\", \"陕西\");put(\"62\", \"甘肃\");put(\"63\", \"青海\");put(\"64\", \"宁夏\");\r\n        put(\"65\", \"新疆\");put(\"71\", \"台湾\");put(\"81\", \"香港\");put(\"82\", \"澳门\");put(\"91\", \"国外\");\r\n    }};\r\n    private static final String reg = '(^\\\\d{17}(\\\\d|X|x)$)';\r\n    // 15位的身份证\r\n    private static final String re_fifteen = '(\\\\d{6})(\\\\d{2})(\\\\d{2})(\\\\d{2})(\\\\d{3})';\r\n    // 18位的身份证\r\n    private static final String re_eighteen = '(\\\\d{6})(\\\\d{4})(\\\\d{2})(\\\\d{2})(\\\\d{3})([0-9]|X|x)';\r\n\r\n    private static final int[] arrInt = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2];\r\n\r\n    private static final String[] arrCh = [\"1\", \"0\", \"X\", \"9\", \"8\", \"7\", \"6\", \"5\", \"4\", \"3\", \"2\"];\r\n    @Override\r\n    public boolean doCheck(String value) {\r\n        return this.checkCard(value);\r\n    }\r\n\r\n    @Override\r\n    public boolean doCheck(String value, String target) {\r\n        return false;\r\n    }\r\n\r\n    // 判断位数\r\n    public static boolean isCardNo(String obj) {\r\n        //身份证号码为15位或者18位，15位时全为数字，18位前17位为数字，最后一位是校验位，可能为数字或字符X\r\n        // String reg = \"(^\\\\d{15}$)|(^\\\\d{17}(\\\\d|X)$)\";\r\n        if(Pattern.matches(reg, obj)){\r\n            return true;\r\n        }\r\n        return false;\r\n    }\r\n    // 判断省份\r\n    public static boolean checkProvince(String obj) {\r\n        String province = obj.substring(0,2);\r\n        if(CITYS.get(province) == null){\r\n            return false;\r\n        }\r\n        return true;\r\n    }\r\n    // 判断生日\r\n    public static boolean checkBirthday(String obj) {\r\n        if(StrUtil.isEmpty(obj)){\r\n            return false;\r\n        }\r\n        int len = obj.length();\r\n        //身份证15位时，次序为省（3位）市（3位）年（2位）月（2位）日（2位）校验位（3位），皆为数字\r\n        if(len == 15){\r\n            // String re_fifteen = \"^(\\\\d{6})(\\\\d{2})(\\\\d{2})(\\\\d{2})(\\\\d{3})$\";\r\n            Pattern pattern = Pattern.compile(re_fifteen);//编译正则表达式(\\w+),?\r\n            Matcher matcher = pattern.matcher(obj);\r\n            if(!matcher.find()) {\r\n                return false;\r\n            }\r\n\r\n\r\n            String year = matcher.group(2);\r\n            String month = matcher.group(3);\r\n            String day = matcher.group(4);\r\n            Date birthday = null;\r\n            try{\r\n                birthday = new Date(\"19\" + year + \"/\" + month + \"/\" + day);\r\n            }catch (Exception e){\r\n                return  false;\r\n            }\r\n\r\n            return verifyBirthday(Integer.parseInt(\"19\" + year), Integer.parseInt(month), Integer.parseInt(day), birthday);\r\n        }\r\n        //身份证18位时，次序为省（3位）市（3位）年（4位）月（2位）日（2位）校验位（4位），校验位末尾可能为X\r\n        if(len == 18){\r\n            // String re_eighteen = \"(\\\\d{6})(\\\\d{4})(\\\\d{2})(\\\\d{2})(\\\\d{3})([0-9]|X|x)\";\r\n            Pattern pattern = Pattern.compile(re_eighteen);//编译正则表达式(\\w+),?\r\n            Matcher matcher = pattern.matcher(obj);\r\n\r\n            if(!matcher.find()) {\r\n                /*\r\n                 * String result = matcher.group(); if(matcher.groupCount() > 0){ for(int i = 1;\r\n                 * i <= matcher.groupCount(); ++i){ String dd =\r\n                 * matcher.group(i);//当前匹配结果中第i个捕获结果，i:1, 2, 3… } }\r\n                 */\r\n                return false;\r\n            }\r\n\r\n            // matcher.group();//当前匹配结果\r\n            // matcher.start();//当前匹配结果首字符在目标字符串中的索引位置index\r\n            // matcher.end();//当前匹配结果末位字符在目标字符串中的索引位置index+1\r\n            // matcher.groupCount();//正则表达式中捕获项个数\r\n            // if(matcher.groupCount() > 0){\r\n            //    for(int i = 1; i <= matcher.groupCount(); ++i){\r\n            //        matcher.group(i);//当前匹配结果中第i个捕获结果，i:1, 2, 3…\r\n            //    }\r\n            //}\r\n\r\n            String year = matcher.group(2);\r\n            String month = matcher.group(3);\r\n            String day = matcher.group(4);\r\n\r\n            Date birthday = new Date(year + '/' + month + '/' + day);\r\n            return verifyBirthday(Integer.parseInt(year), Integer.parseInt(month), Integer.parseInt(day), birthday);\r\n        }\r\n        return false;\r\n    }\r\n\r\n    private static String changeFivteenToEighteen(String obj){\r\n        int leng = obj.length();\r\n        if(leng == 15) {\r\n            // int arrInt[] = {7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2};\r\n            // String arrCh[] = {\"1\", \"0\", \"X\", \"9\", \"8\", \"7\", \"6\", \"5\", \"4\", \"3\", \"2\"};\r\n            int cardTemp = 0, i;\r\n            obj = obj.substring(0, 6) + \"19\" + obj.substring(6, leng);\r\n            for(i = 0; i < 17; i ++){\r\n                cardTemp += Integer.parseInt(obj.substring(i, i + 1)) * arrInt[i];\r\n            }\r\n            obj += arrCh[cardTemp % 11];\r\n            return obj;\r\n        }\r\n        return obj;\r\n    }\r\n\r\n    private static boolean verifyBirthday(int year,int month, int day,Date birthday){\r\n        Date now = new Date();\r\n        int nowYear = now.getYear() + 1900;\r\n        int birthYear = birthday.getYear() + 1900;\r\n        //年月日是否合理\r\n        if(birthYear == year && (birthday.getMonth() + 1) == month && birthday.getDate() == day){\r\n            //判断年份的范围（3岁到100岁之间)\r\n            int time = nowYear - year;\r\n            if(time >= 0 && time <= 130){\r\n                return true;\r\n            }\r\n            return false;\r\n        }\r\n        return false;\r\n    }\r\n\r\n\r\n    // 检验位的检测\r\n    public static boolean checkParity(String obj) {\r\n        obj = changeFivteenToEighteen(obj);//15位转18位\r\n        int len = obj.length();\r\n        if(len == 18) {\r\n            // int arrInt[] = {7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2};\r\n            // String arrCh[] = {\"1\", \"0\", \"X\", \"9\", \"8\", \"7\", \"6\", \"5\", \"4\", \"3\", \"2\"};\r\n            int cardTemp = 0, i;\r\n            String valnum = \"\";\r\n            for(i = 0; i < 17; i ++) {\r\n                cardTemp += Integer.parseInt(obj.substring(i, i + 1)) * arrInt[i];\r\n            }\r\n            valnum = arrCh[cardTemp % 11];\r\n            if(valnum.equalsIgnoreCase(obj.substring(17, 18))){\r\n                return true;\r\n            }\r\n            return false;\r\n        }\r\n        return false;\r\n    }\r\n    /**\r\n     *\r\n     * @Title: checkCard\r\n     * @Description:(身份证规范性检查)\r\n     * @author dds\r\n     * @Date 2019年10月14日  下午2:25:03\r\n     * @param obj\r\n     * @return boolean    返回类型\r\n     */\r\n    public  boolean checkCard(String obj) {\r\n        try{\r\n            if(obj==null){\r\n                return false;\r\n            }\r\n            obj = obj.trim();\r\n\r\n            if(\"\".equals(obj)) { // 判空处理\r\n                return false;\r\n            }\r\n            if(!isCardNo(obj)) { // 判断位数\r\n                return false;\r\n            }\r\n            if(!checkProvince(obj)) { // 判断省份\r\n                return false;\r\n            }\r\n            if(!checkBirthday(obj)) { // 判断生日\r\n                return false;\r\n            }\r\n            if(!checkParity(obj)) { // 检验位的检测\r\n                return false;\r\n            }\r\n        }catch (Exception e){\r\n            return  false;\r\n        }\r\n        return true;\r\n    }\r\n}\r\n\r\n\r\n",
+          "columns": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "columnNames": [
+            "id",
+            "xm",
+            "xbhz",
+            "zjxyhz",
+            "ywm",
+            "gjhz",
+            "hyzkhz",
+            "byzkhz",
+            "mzhz",
+            "jkzk",
+            "csrq",
+            "sjly",
+            "sfzh",
+            "whcdhz",
+            "zjzlhz",
+            "zzmm"
+          ],
+          "fieldLabelId": "1846077482147926017"
+        }
+      },
+      "redis_host": "ocean-redis",
+      "redis_port": 6379,
+      "redis_db_num": 0,
+      "redis_key": "datasecurity.datascan.basics_info_f8afde2f544b49f2bcb9609c4abff9c6",
+      "source_table_name": [
+        "basics_info_source"
+      ],
+      "result_table_name": "basics_info_datascan"
+    }
+  ],
+  "sink": [
+    {
+      "plugin_name": "Void",
+      "source_table_name": [
+        "basics_info_datascan"
+      ]
+    }
+  ]
+}
